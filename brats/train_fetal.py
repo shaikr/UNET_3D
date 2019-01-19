@@ -26,6 +26,8 @@ parser.add_argument("--experiment_name", help="Name of experiment folder",
                     type=str, required=False, default=datetime.datetime.now().strftime("%Y_%m_%d_%H_%M"))
 opts = parser.parse_args()
 
+opts.config_dir = os.path.join(opts.config_dir, opts.experiment_name)
+
 # Load previous config if exists
 if Path(os.path.join(opts.config_dir, 'config.json')).exists() and not opts.overwrite_config:
     print('Loading previous config.json from {}'.format(opts.config_dir))
@@ -34,15 +36,15 @@ if Path(os.path.join(opts.config_dir, 'config.json')).exists() and not opts.over
 else:
     config = dict()
     config["base_dir"] = opts.config_dir
-    config["split_dir"] = './debug_split'
-    config['scans_dir'] = '../../Datasets/dataset_name'
+    config["split_dir"] = '../debug_split'
+    config['scans_dir'] = '../../../placenta_data'
 
     Path(config["base_dir"]).mkdir(parents=True, exist_ok=True)
     Path(config["split_dir"]).mkdir(parents=True, exist_ok=True)
 
     # Training params
-    config["batch_size"] = 8
-    config["validation_batch_size"] = 8 # most of times should be equal to "batch_size"
+    config["batch_size"] = 2
+    config["validation_batch_size"] = 2 # most of times should be equal to "batch_size"
     config["patches_per_epoch"] = 800  # patches_per_epoch / batch_size = steps per epoch
 
     config["n_epochs"] = 50  # cutoff the training after this many epochs
