@@ -1,5 +1,6 @@
 import os
 import glob
+import datetime
 
 import fetal_net
 import fetal_net.metrics
@@ -21,6 +22,8 @@ parser.add_argument("--config_dir", help="specifies config dir path",
                     type=str, required=True)
 parser.add_argument("--split_dir", help="specifies config dir path",
                     type=str, required=False)
+parser.add_argument("--experiment_name", help="Name of experiment folder",
+                    type=str, required=False, default=datetime.datetime.now().strftime("%Y_%m_%d_%H_%M"))
 opts = parser.parse_args()
 
 # Load previous config if exists
