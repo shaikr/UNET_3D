@@ -20,8 +20,8 @@ parser.add_argument("--overwrite_config", help="overwrite saved config",
                     action="store_true")
 parser.add_argument("--config_dir", help="specifies config dir path",
                     type=str, required=True)
-parser.add_argument("--split_dir", help="specifies config dir path",
-                    type=str, required=False)
+parser.add_argument("--split_dir", help="Name of split folder",
+                        type=str, required=False, default='../debug_split')
 parser.add_argument("--experiment_name", help="Name of experiment folder",
                     type=str, required=False, default=datetime.datetime.now().strftime("%Y_%m_%d_%H_%M"))
 opts = parser.parse_args()
@@ -35,12 +35,6 @@ if Path(os.path.join(opts.config_dir, 'config.json')).exists() and not opts.over
         config = json.load(f)
 else:
 
-    parser.add_argument("--split_dir", help="Name of split folder",
-                        type=str, required=False, default='../debug_split')
-    parser.add_argument("--scans_dir", help="Name of data folder",
-                        type=str, required=False, default='../../../placenta_data')
-    parser.add_argument("--batch_size", help="Batch size",
-                        type=int, required=False, default=2)
 
     config = dict()
     config["base_dir"] = opts.config_dir
