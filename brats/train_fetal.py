@@ -34,6 +34,14 @@ if Path(os.path.join(opts.config_dir, 'config.json')).exists() and not opts.over
     with open(os.path.join(opts.config_dir, 'config.json')) as f:
         config = json.load(f)
 else:
+
+    parser.add_argument("--split_dir", help="Name of split folder",
+                        type=str, required=False, default='../debug_split')
+    parser.add_argument("--scans_dir", help="Name of data folder",
+                        type=str, required=False, default='../../../placenta_data')
+    parser.add_argument("--batch_size", help="Batch size",
+                        type=int, required=False, default=2)
+
     config = dict()
     config["base_dir"] = opts.config_dir
     config["split_dir"] = '../debug_split'
