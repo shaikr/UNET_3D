@@ -33,8 +33,8 @@ def main(config, split='test', overlap_factor=1, config2=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config_dir", help="specifies config dir path",
-                        type=str, required=True)
+    parser.add_argument("--experiment_dir", help="specifies config dir path",
+                        type=str, required=False, default='')
     parser.add_argument("--split", help="What split to predict on? (test/val)",
                         type=str, default='test')
     parser.add_argument("--overlap_factor", help="specifies overlap between prediction patches",
