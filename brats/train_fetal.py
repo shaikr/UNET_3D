@@ -19,22 +19,42 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--overwrite_config", help="overwrite saved config",
                     action="store_true")
 parser.add_argument("--config_dir", help="specifies config dir path",
-                    type=str, required=True)
+                    type=str, required=False, default='../../../../../datadrive/configs')
 parser.add_argument("--split_dir", help="Name of split folder",
+
                         type=str, required=False, default='../debug_split')
 parser.add_argument("--experiment_name", help="Name of experiment folder",
-                    type=str, required=False, default=datetime.datetime.now().strftime("%Y_%m_%d_%H_%M"))
+                    type=str, required=False, default="experiment_minus_6") #datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")) # '2019_02_11_20_40') #datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")) #default=datetime.datetime.now().strftime("%Y_%m_%d_%H_%M"))
+parser.add_argument("--imitate_experiment", help="Name of experiment folder to imitate",
+                    type=str, required=False, default="2019_03_10_18_46") # '2019_02_11_20_40') #datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")) #default=datetime.datetime.now().strftime("%Y_%m_%d_%H_%M"))
+
 opts = parser.parse_args()
 
+
+opts.to_imitate_dir = os.path.join(opts.config_dir, opts.imitate_experiment)
 opts.config_dir = os.path.join(opts.config_dir, opts.experiment_name)
 
 # Load previous config if exists
-if Path(os.path.join(opts.config_dir, 'config.json')).exists() and not opts.overwrite_config:
+if Path(os.path.join(opts.config_dir, 'config.json')).exists(): #and not opts.overwrite_config:
     print('Loading previous config.json from {}'.format(opts.config_dir))
     with open(os.path.join(opts.config_dir, 'config.json')) as f:
         config = json.load(f)
+elif Path(os.path.join(opts.to_imitate_dir, 'config.json')).exists():
+    print('Imitating previous config.json from {}'.format(opts.to_imitate_dir))
+    with open(os.path.join(opts.to_imitate_dir, 'config.json')) as f:
+        config = json.load(f)
+    config["skip_blank_val"] = True  # if True, then patches without any target will be skipped
+    if 'gamma' in config:
+        print(config['gamma'])
+        print(config['alpha'])
+        os.exit()
+    config["base_dir"] = opts.config_dir
+    Path(config["base_dir"]).mkdir(parents=True, exist_ok=True)
+    config["data_file"] = os.path.join(config["base_dir"], "fetal_data.h5")
+    config["model_file"] = os.path.join(config["base_dir"], "fetal_net_model")
+    with open(os.path.join(config["base_dir"], 'config.json'), mode='w') as f:
+        json.dump(config, f, indent=2)
 else:
-
 
     config = dict()
     config["base_dir"] = opts.config_dir
@@ -49,14 +69,14 @@ else:
     config["validation_batch_size"] = 2 # most of times should be equal to "batch_size"
     config["patches_per_epoch"] = 800  # patches_per_epoch / batch_size = steps per epoch
 
-    config["n_epochs"] = 50  # cutoff the training after this many epochs
+    config["n_epochs"] = 300  # cutoff the training after this many epochs
     config["patience"] = 3  # learning rate will be reduced after this many epochs if the validation loss is not improving
-    config["early_stop"] = 7  # training will be stopped after this many epochs without the validation loss improving
+    config["early_stop"] = 25  # training will be stopped after this many epochs without the validation loss improving
     config["initial_learning_rate"] = 5e-4
-    config["learning_rate_drop"] = 0.5  # factor by which the learning rate will be reduced
+    config["learning_rate_drop"] = 0.75  # factor by which the learning rate will be reduced
     config["validation_split"] = 0.90  # portion of the data that will be used for training %
 
-    config["3D"] = True  # Enable for 3D Models
+    config["3D"] = False  # Enable for 3D Models
     if config["3D"]:
         # Model params (3D)
         config["patch_shape"] = (96, 96)  # switch to None to train on the whole image
@@ -90,18 +110,18 @@ else:
         1: 'dice_coefficient_loss',
         2: 'focal_loss',
         3: 'dice_and_xent'
-    }[1]
+    }[2]
 
     config["augment"] = {
         "flip": [0.5, 0.5, 0.5],  # augments the data by randomly flipping an axis during
         "permute": False,  # NOT SUPPORTED (data shape must be a cube. Augments the data by permuting in various directions)
-        "translate": (15, 15, 7),  #
-        "scale": (0.1, 0.1, 0),  # i.e 0.20 for 20%, std of scaling factor, switch to None if you want no distortion
+        "translate": (14, 14, 7),  #
+        "scale": (0.075, 0.075, 0),  # i.e 0.20 for 20%, std of scaling factor, switch to None if you want no distortion
         # "iso_scale": {
         #     "max": 1
         # },
-        "rotate": (0, 0, 90),  # std of angle rotation, switch to None if you want no rotation
-        "poisson_noise": 0.5,
+        "rotate": (0, 0, 30),  # std of angle rotation, switch to None if you want no rotation
+        #"poisson_noise": 0.5,
         # "contrast": {
         #     'prob': 0,
         #     'min_factor': 0.2,
@@ -128,15 +148,16 @@ else:
     config["categorical"] = False  # will make the target one_hot
 
     # Relevant only for previous slice truth training
-    config["prev_truth_index"] = None  # None for regular training
-    config["prev_truth_size"] = None  # None for regular training
-
+    config["prev_truth_index"] = None #config["truth_index"]-1  # None for regular training
+    config["prev_truth_size"] = None # 1  # None for regular training
+    config["gamma"] = 2
+    config["alpha"] = 0.5
     config["labels"] = (1,)  # the label numbers on the input image - currently only 1 label supported
-
-    config["skip_blank_train"] = False  # if True, then patches without any target will be skipped
-    config["skip_blank_val"] = False  # if True, then patches without any target will be skipped
+    config["skip_blank_train"] = True  # if True, then patches without any target will be skipped
+    config["skip_blank_val"] = True  # if True, then patches without any target will be skipped
     config["drop_easy_patches_train"] = True  # will randomly prefer balanced patches (50% 1, 50% 0)
-    config["drop_easy_patches_val"] = False  # will randomly prefer balanced patches (50% 1, 50% 0)
+    config["drop_easy" \
+           "_patches_val"] = False  # will randomly prefer balanced patches (50% 1, 50% 0)
 
     # Data normalization
     config['normalization'] = {
@@ -168,7 +189,7 @@ else:
     config["training_file"] = os.path.join(config["split_dir"], "training_ids.pkl")
     config["validation_file"] = os.path.join(config["split_dir"], "validation_ids.pkl")
     config["test_file"] = os.path.join(config["split_dir"], "test_ids.pkl")
-    config["overwrite"] = False  # If True, will previous files. If False, will use previously written files.
+    config["overwrite"] = True  # If True, will previous files. If False, will use previously written files.
 
     if config['3D']:
         config["input_shape"] = [1] + list(config["input_shape"])
@@ -197,7 +218,7 @@ def fetch_training_data_files(return_subject_ids=False):
         return training_data_files
 
 
-def main(overwrite=False):
+def main(overwrite=True):
     # convert input images into an hdf5 file
     if overwrite or not os.path.exists(config["data_file"]):
         training_files, subject_ids = fetch_training_data_files(return_subject_ids=True)

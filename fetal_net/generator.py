@@ -162,11 +162,16 @@ def get_validation_split(data_file, training_file, validation_file, test_file, d
     """
     if overwrite or not os.path.exists(training_file):
         print("Creating validation split...")
+        print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
         nb_samples = len(data_file.root.data)
         sample_list = list(range(nb_samples))
         random.shuffle(sample_list)
         test_list = [sample_list.pop()]
+        print(test_list)
+        test_list = [0, 10, 20]
         training_list, validation_list = split_list(sample_list, split=data_split)
+        validation_list = [6, 12, 16]
+        training_list = [1, 3, 5, 7, 9, 13, 14, 15, 17, 18, 21, 22, 23, 24, 25, 26, 19, 11, 8, 7, 4, 2]
         pickle_dump(training_list, training_file)
         pickle_dump(validation_list, validation_file)
         pickle_dump(test_list, test_file)
