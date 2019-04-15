@@ -170,13 +170,14 @@ else:
     config["ext"] = ""  # ".gz"
 
     # Not relevant at the moment...
-    config["dropout_rate"]=0
+    config["dropout_rate"] = 0
 
     # Auto set - do not touch
     config["augment"] = config["augment"] if any(config["augment"].values()) else None
     config["n_labels"] = len(config["labels"])
     config["all_modalities"] = ["volume", "prediction"]
 
+    # IMPORTANT - the prediction dtype ?
     config["pred_index"] = config["truth_index"]  # None for regular training
     config["pred_size"] = 1  # None for regular training, can be more if want to get all predictions
 
@@ -228,7 +229,7 @@ def main(overwrite=True):
         training_files, subject_ids = fetch_training_data_files(return_subject_ids=True)
 
         _, (mean, std) = write_data_to_file(training_files, config["data_file"], subject_ids=subject_ids,
-                                            normalize=config['normalization'])
+                                            normalize=config['normalization'], add_pred=config['pred_size'])
         with open(os.path.join(config["base_dir"], 'norm_params.json'), mode='w') as f:
             json.dump({'mean': mean, 'std': std}, f)
 
