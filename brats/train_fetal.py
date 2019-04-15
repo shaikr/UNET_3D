@@ -175,21 +175,25 @@ else:
     # Auto set - do not touch
     config["augment"] = config["augment"] if any(config["augment"].values()) else None
     config["n_labels"] = len(config["labels"])
-    config["all_modalities"] = ["volume"]
-    config["training_modalities"] = config[
-        "all_modalities"]  # change this if you want to only use some of the modalities
-    config["nb_channels"] = len(config["training_modalities"])
+    config["all_modalities"] = ["volume", "prediction"]
+
+    config["pred_index"] = config["truth_index"]  # None for regular training
+    config["pred_size"] = 1  # None for regular training, can be more if want to get all predictions
+
+    config["training_modalities"] = config["all_modalities"]  # change this if you want to only use some of the modalities
+    # config["nb_channels"] = len(config["training_modalities"])
     config["input_shape"] = tuple(list(config["patch_shape"]) +
-                                  [config["patch_depth"] + (
-                                      config["prev_truth_size"] if config["prev_truth_index"] is not None else 0)])
-    config["truth_channel"] = config["nb_channels"]
+                                  [config["patch_depth"] +
+                                   (config["pred_size"] if "prediction" in config["training_modalities"] else 0)
+                                   + (config["prev_truth_size"] if config["prev_truth_index"] is not None else 0)])
+    # config["truth_channel"] = config["nb_channels"]
     # Auto set - do not touch
     config["data_file"] = os.path.join(config["base_dir"], "fetal_data.h5")
     config["model_file"] = os.path.join(config["base_dir"], "fetal_net_model")
     config["training_file"] = os.path.join(config["split_dir"], "training_ids.pkl")
     config["validation_file"] = os.path.join(config["split_dir"], "validation_ids.pkl")
     config["test_file"] = os.path.join(config["split_dir"], "test_ids.pkl")
-    config["overwrite"] = True  # If True, will previous files. If False, will use previously written files.
+    config["overwrite"] = True  # If True, will override previous files. If False, will use previously written files.
 
     if config['3D']:
         config["input_shape"] = [1] + list(config["input_shape"])
