@@ -24,7 +24,7 @@ parser.add_argument("--split_dir", help="Name of split folder",
 
                         type=str, required=False, default='../debug_split')
 parser.add_argument("--experiment_name", help="Name of experiment folder",
-                    type=str, required=False, default="experiment_minus_6") #datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")) # '2019_02_11_20_40') #datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")) #default=datetime.datetime.now().strftime("%Y_%m_%d_%H_%M"))
+                    type=str, required=False, default="experiment_all_samples") #datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")) # '2019_02_11_20_40') #datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")) #default=datetime.datetime.now().strftime("%Y_%m_%d_%H_%M"))
 parser.add_argument("--imitate_experiment", help="Name of experiment folder to imitate",
                     type=str, required=False, default="2019_03_10_18_46") # '2019_02_11_20_40') #datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")) #default=datetime.datetime.now().strftime("%Y_%m_%d_%H_%M"))
 
@@ -50,6 +50,7 @@ elif Path(os.path.join(opts.to_imitate_dir, 'config.json')).exists():
         os.exit()
     config["base_dir"] = opts.config_dir
     Path(config["base_dir"]).mkdir(parents=True, exist_ok=True)
+    Path(config["split_dir"]).mkdir(parents=True, exist_ok=True)
     config["data_file"] = os.path.join(config["base_dir"], "fetal_data.h5")
     config["model_file"] = os.path.join(config["base_dir"], "fetal_net_model")
     with open(os.path.join(config["base_dir"], 'config.json'), mode='w') as f:
