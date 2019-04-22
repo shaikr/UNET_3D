@@ -175,10 +175,11 @@ def random_flip_dimensions(n_dim, flip_factor):
     ]
 
 
-def augment_data(data, truth, data_min, data_max, scale_deviation=None, iso_scale_deviation=None, rotate_deviation=None,
+def augment_data(data, truth, data_min, data_max, pred=None, scale_deviation=None, iso_scale_deviation=None, rotate_deviation=None,
                  translate_deviation=None, flip=None, contrast_deviation=None, poisson_noise=None,
                  piecewise_affine=None, elastic_transform=None, intensity_multiplication_range=None,
-                 gaussian_filter=None, coarse_dropout=None, data_range=None, truth_range=None, prev_truth_range=None):
+                 gaussian_filter=None, coarse_dropout=None, data_range=None, truth_range=None, prev_truth_range=None,
+                 pred_range=None):
     n_dim = len(truth.shape)
     if scale_deviation:
         scale_factor = random_scale_factor(n_dim, std=scale_deviation)
@@ -272,6 +273,18 @@ def augment_data(data, truth, data_min, data_max, scale_deviation=None, iso_scal
         prev_truth_data = interpolate_affine_range(distorted_truth_data, distorted_truth_affine,
                                                    prev_truth_range, order=0, mode='constant', cval=0)
 
+    if pred_range is None:
+        pred_data = None
+    else:
+        pred_image, pred_affine = pred, np.eye(4)
+        distorted_pred_data, distorted_pred_affine = distort_image(pred_image, pred_affine,
+                                                                 flip_axis=flip_axis,
+                                                                 scale_factor=scale_factor,
+                                                                 rotate_factor=rotate_factor,
+                                                                 translate_factor=translate_factor)
+        pred_data = interpolate_affine_range(distorted_pred_data, distorted_pred_affine,
+                                             pred_range, order=0, mode='constant', cval=0)
+
     if piecewise_affine_scale > 0:
         data, truth = apply_piecewise_affine(data, truth, piecewise_affine_scale)
 
@@ -293,7 +306,7 @@ def augment_data(data, truth, data_min, data_max, scale_deviation=None, iso_scal
     if coarse_dropout is not None:
         data = apply_coarse_dropout(data, rate=coarse_dropout_rate, size_percent=coarse_dropout_size, per_channel=coarse_dropout["per_channel"])
 
-    return data, truth_data, prev_truth_data
+    return data, truth_data, prev_truth_data, pred_data
 
 
 def generate_permutation_keys():
