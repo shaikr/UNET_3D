@@ -376,11 +376,11 @@ def get_data_from_file(data_file, index, patch_shape=None, add_pred=None):
         data, truth, pred = get_data_from_file(data_file, index, patch_shape=None, add_pred=add_pred)
         x = get_patch_from_3d_data(data, patch_shape, patch_index)
         y = get_patch_from_3d_data(truth, patch_shape, patch_index)
-        if add_pred:
+        if add_pred is not None:
             z = get_patch_from_3d_data(pred, patch_shape, patch_index)
     else:
         x, y = data_file.root.data[index], data_file.root.truth[index]
-        if add_pred:
+        if add_pred is not None:
             z = data_file.root.pred[index]
         else:
             z = None
