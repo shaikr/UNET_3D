@@ -193,6 +193,8 @@ def get_validation_split(data_file, training_file, validation_file, test_file, d
         # training_list, validation_list = split_list(sample_list, split=data_split)
         validation_list = [6, 12, 16]
         training_list = [1, 3, 5, 7, 9, 13, 14, 15, 17, 18, 21, 22, 23, 24, 25, 26, 19, 11, 8, 7, 4, 2]
+        # random.shuffle(training_list)
+        # training_list = training_list[:22]
         pickle_dump(training_list, training_file)
         pickle_dump(validation_list, validation_file)
         pickle_dump(test_list, test_file)
@@ -284,7 +286,7 @@ def add_data(x_list, y_list, data_file, index, truth_index, truth_size=1, augmen
         else:
             pred_range = None
 
-        data, truth, prev_truth, pred = augment_data(data, truth,
+        data, truth, prev_truth, real_pred = augment_data(data, truth,
                                                data_min=data_file.stats.min[index], data_max=data_file.stats.max[index],
                                                pred=pred,
                                                scale_deviation=augment.get('scale', None),

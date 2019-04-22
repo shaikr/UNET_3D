@@ -186,7 +186,7 @@ else:
     # config["nb_channels"] = len(config["training_modalities"])
     config["input_shape"] = tuple(list(config["patch_shape"]) +
                                   [config["patch_depth"] +
-                                   (config["pred_size"] if "prediction" in config["training_modalities"] else 0)
+                                   (config["pred_size"] if config["pred_index"] is not None else 0)
                                    + (config["prev_truth_size"] if config["prev_truth_index"] is not None else 0)])
     # config["truth_channel"] = config["nb_channels"]
     # Auto set - do not touch
