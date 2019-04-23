@@ -27,7 +27,9 @@ def get_set_of_patch_indices_full(start, stop, step):
     return np.array(list(itertools.product(*indices)))
 
 
-def batch_iterator(indices, batch_size, data_0, patch_shape, truth_0, prev_truth_index, truth_patch_shape):
+def batch_iterator(indices, batch_size, data_0, patch_shape,
+                   truth_0, prev_truth_index, truth_patch_shape,
+                   pred_0, pred_index, pred_patch_shape):
     i = 0
     while i < len(indices):
         batch = []
@@ -35,6 +37,13 @@ def batch_iterator(indices, batch_size, data_0, patch_shape, truth_0, prev_truth
         while len(batch) < batch_size and i < len(indices):
             curr_index = indices[i]
             patch = get_patch_from_3d_data(data_0, patch_shape=patch_shape, patch_index=curr_index)
+
+            if pred_0 is not None:
+                pred_index = list(curr_index[:2]) + [curr_index[2] + pred_index]
+                pred_patch = get_patch_from_3d_data(pred_0, patch_shape=pred_patch_shape,
+                                                     patch_index=pred_index)
+                patch = np.concatenate([patch, pred_patch], axis=-1)
+
             if truth_0 is not None:
                 truth_index = list(curr_index[:2]) + [curr_index[2] + prev_truth_index]
                 truth_patch = get_patch_from_3d_data(truth_0, patch_shape=truth_patch_shape,
@@ -48,7 +57,8 @@ def batch_iterator(indices, batch_size, data_0, patch_shape, truth_0, prev_truth
 
 
 def patch_wise_prediction(model: Model, data, patch_shape, overlap_factor=0, batch_size=5,
-                          permute=False, truth_data=None, prev_truth_index=None, prev_truth_size=None):
+                          permute=False, truth_data=None, prev_truth_index=None, prev_truth_size=None,
+                          pred_data=None, pred_index=None, pred_size=None):
     """
     :param truth_data:
     :param permute:
@@ -77,6 +87,18 @@ def patch_wise_prediction(model: Model, data, patch_shape, overlap_factor=0, bat
                     [_ for _ in pad_for_fit],
                     'constant', constant_values=np.percentile(data_0, q=1))
 
+    if pred_data is not None:
+        pred_0 = np.pad(pred_data[0],
+                         [(np.ceil(_ / 2).astype(int), np.floor(_ / 2).astype(int)) for _ in
+                          np.subtract(patch_shape, prediction_shape)],
+                         mode='constant', constant_values=0)
+        pred_0 = np.pad(pred_0, [_ for _ in pad_for_fit],
+                         'constant', constant_values=0)
+        pred_patch_shape = list(patch_shape[:2]) + [pred_size]
+    else:
+        pred_0 = None
+        pred_patch_shape = None
+
     if truth_data is not None:
         truth_0 = np.pad(truth_data[0],
                          [(np.ceil(_ / 2).astype(int), np.floor(_ / 2).astype(int)) for _ in
@@ -95,7 +117,8 @@ def patch_wise_prediction(model: Model, data, patch_shape, overlap_factor=0, bat
                                             np.subtract(patch_shape, overlap))
 
     b_iter = batch_iterator(indices, batch_size, data_0, patch_shape,
-                            truth_0, prev_truth_index, truth_patch_shape)
+                            truth_0, prev_truth_index, truth_patch_shape,
+                            pred_0, pred_index, pred_patch_shape)
     tb_iter = iter(ThreadedGenerator(b_iter, queue_maxsize=50))
 
     data_shape = list(data.shape[-3:] + np.sum(pad_for_fit, -1))
@@ -207,7 +230,8 @@ def multi_class_prediction(prediction, affine):
 
 
 def run_validation_case(data_index, output_dir, model, data_file, training_modalities, patch_shape,
-                        overlap_factor=0, permute=False, prev_truth_index=None, prev_truth_size=None):
+                        overlap_factor=0, permute=False, prev_truth_index=None, prev_truth_size=None,
+                        pred_index=None, pred_size=None):
     """
     Runs a test case and writes predicted images to file.
     :param data_index: Index from of the list of test cases to get an image prediction from.
@@ -230,21 +254,27 @@ def run_validation_case(data_index, output_dir, model, data_file, training_modal
     else:
         test_truth_data = None
 
-    for i, modality in enumerate(training_modalities):
-        image = get_image(test_data[i])
-        image.to_filename(os.path.join(output_dir, "data_{0}.nii.gz".format(modality)))
+    if pred_index is not None:
+        test_pred_data = np.asarray([data_file.root.pred[data_index]])
+    else:
+        test_pred_data = None
+
+    # for i, modality in enumerate(training_modalities):
+    #     image = get_image(test_data[i])
+    #     image.to_filename(os.path.join(output_dir, "data_{0}.nii.gz".format(modality)))
 
     test_truth = get_image(data_file.root.truth[data_index])
     test_truth.to_filename(os.path.join(output_dir, "truth.nii.gz"))
 
     if patch_shape == test_data.shape[-3:]:
+        print("Warning - went in where it wasn't expected!!!!!")
         prediction = predict(model, test_data, permute=permute)
     else:
         prediction = \
             patch_wise_prediction(model=model, data=test_data, overlap_factor=overlap_factor,
                                   patch_shape=patch_shape, permute=permute,
-                                  truth_data=test_truth_data, prev_truth_index=prev_truth_index,
-                                  prev_truth_size=prev_truth_size)[np.newaxis]
+                                  truth_data=test_truth_data, prev_truth_index=prev_truth_index, prev_truth_size=prev_truth_size,
+                                  pred_data=test_pred_data, pred_index=pred_index, pred_size=pred_size)[np.newaxis]
     if prediction.shape[-1] > 1:
         prediction = prediction[..., 1]
     prediction = prediction.squeeze()
@@ -260,7 +290,7 @@ def run_validation_case(data_index, output_dir, model, data_file, training_modal
 
 def run_validation_cases(validation_keys_file, model_file, training_modalities, hdf5_file, patch_shape,
                          output_dir=".", overlap_factor=0, permute=False,
-                         prev_truth_index=None, prev_truth_size=None):
+                         prev_truth_index=None, prev_truth_size=None, pred_index=None, pred_size=None):
     file_names = []
     validation_indices = pickle_load(validation_keys_file)
     model = load_old_model(get_last_model_path(model_file))
@@ -274,7 +304,7 @@ def run_validation_cases(validation_keys_file, model_file, training_modalities, 
             run_validation_case(data_index=index, output_dir=case_directory, model=model, data_file=data_file,
                                 training_modalities=training_modalities, overlap_factor=overlap_factor,
                                 permute=permute, patch_shape=patch_shape, prev_truth_index=prev_truth_index,
-                                prev_truth_size=prev_truth_size))
+                                prev_truth_size=prev_truth_size, pred_index=pred_index, pred_size=pred_size))
     data_file.close()
     return file_names
 

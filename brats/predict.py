@@ -28,7 +28,9 @@ def main(config, split='test', overlap_factor=1, config2=None):
                          overlap_factor=overlap_factor,
                          patch_shape=config["patch_shape"] + [config["patch_depth"]],
                          prev_truth_index=config["prev_truth_index"],
-                         prev_truth_size=config["prev_truth_size"])
+                         prev_truth_size=config["prev_truth_size"],
+                         pred_index=config["pred_index"],
+                         pred_size=config["pred_size"])
 
 
 if __name__ == "__main__":
