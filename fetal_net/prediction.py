@@ -279,11 +279,20 @@ def run_validation_case(data_index, output_dir, model, data_file, training_modal
         prediction = prediction[..., 1]
     prediction = prediction.squeeze()
     prediction_image = get_image(prediction)
+
+    name_counter = 0
     if isinstance(prediction_image, list):
         for i, image in enumerate(prediction_image):
-            image.to_filename(os.path.join(output_dir, "prediction_{0}.nii.gz".format(i + 1)))
+            filename = os.path.join(output_dir, "prediction_{0}.nii.gz".format(i + 1))
+            while os.path.exists(filename):
+                name_counter += 1
+                filename = os.path.join(output_dir, "prediction_{0}_{1}.nii.gz".format(i + 1, name_counter))
+            image.to_filename(filename)
     else:
         filename = os.path.join(output_dir, "prediction.nii.gz")
+        while os.path.exists(filename):
+            name_counter += 1
+            filename = os.path.join(output_dir, "prediction_{0}.nii.gz".format(name_counter))
         prediction_image.to_filename(filename)
     return filename
 
