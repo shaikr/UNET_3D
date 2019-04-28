@@ -39,9 +39,9 @@ def batch_iterator(indices, batch_size, data_0, patch_shape,
             patch = get_patch_from_3d_data(data_0, patch_shape=patch_shape, patch_index=curr_index)
 
             if pred_0 is not None:
-                pred_index = list(curr_index[:2]) + [curr_index[2] + pred_index]
+                cur_pred_index = list(curr_index[:2]) + [curr_index[2] + pred_index]
                 pred_patch = get_patch_from_3d_data(pred_0, patch_shape=pred_patch_shape,
-                                                     patch_index=pred_index)
+                                                     patch_index=cur_pred_index)
                 patch = np.concatenate([patch, pred_patch], axis=-1)
 
             if truth_0 is not None:
