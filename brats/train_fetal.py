@@ -26,7 +26,7 @@ parser.add_argument("--split_dir", help="Name of split folder",
 parser.add_argument("--experiment_name", help="Name of experiment folder",
                     type=str, required=False, default="experiment_all_samples") #datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")) # '2019_02_11_20_40') #datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")) #default=datetime.datetime.now().strftime("%Y_%m_%d_%H_%M"))
 parser.add_argument("--imitate_experiment", help="Name of experiment folder to imitate",
-                    type=str, required=False, default="2019_03_10_18_46") # '2019_02_11_20_40') #datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")) #default=datetime.datetime.now().strftime("%Y_%m_%d_%H_%M"))
+                    type=str, required=False, default="") # '2019_02_11_20_40') #datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")) #default=datetime.datetime.now().strftime("%Y_%m_%d_%H_%M"))
 
 opts = parser.parse_args()
 
@@ -179,8 +179,8 @@ else:
     config["all_modalities"] = ["volume", "prediction"]
 
     # IMPORTANT - the prediction dtype ?
-    config["pred_index"] = config["truth_index"]  # None for regular training
-    config["pred_size"] = 1  # None for regular training, can be more if want to get all predictions
+    config["pred_index"] = 0 #config["truth_index"]  # None for regular training
+    config["pred_size"] = 5 # 1  # None for regular training, can be more if want to get all predictions
 
     config["training_modalities"] = config["all_modalities"]  # change this if you want to only use some of the modalities
     # config["nb_channels"] = len(config["training_modalities"])
@@ -224,7 +224,7 @@ def fetch_training_data_files(return_subject_ids=False):
         return training_data_files
 
 
-def main(overwrite=True):
+def main(overwrite=False):
     # convert input images into an hdf5 file
     if overwrite or not os.path.exists(config["data_file"]):
         training_files, subject_ids = fetch_training_data_files(return_subject_ids=True)
