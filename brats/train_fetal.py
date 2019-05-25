@@ -115,32 +115,45 @@ else:
 
     config["augment"] = {
         "flip": [0.5, 0.5, 0.5],  # augments the data by randomly flipping an axis during
-        "permute": False,  # NOT SUPPORTED (data shape must be a cube. Augments the data by permuting in various directions)
-        "translate": (14, 14, 7),  #
-        "scale": (0.075, 0.075, 0),  # i.e 0.20 for 20%, std of scaling factor, switch to None if you want no distortion
+        "permute": False,
+        # NOT SUPPORTED (data shape must be a cube. Augments the data by permuting in various directions)
+        "translate": (15, 15, 7),  #
+        "scale": (0.1, 0.1, 0),  # i.e 0.20 for 20%, std of scaling factor, switch to None if you want no distortion
         # "iso_scale": {
         #     "max": 1
         # },
-        "rotate": (0, 0, 30),  # std of angle rotation, switch to None if you want no rotation
-        #"poisson_noise": 0.5,
-        # "contrast": {
-        #     'prob': 0,
-        #     'min_factor': 0.2,
-        #     'max_factor': 0.1
-        # },
+        "rotate": (0, 0, 90),  # std of angle rotation, switch to None if you want no rotation
+        "poisson_noise": 1,
+        "gaussian_filter": {
+            "prob": 0.0,
+            "max_sigma": 1
+        },
+        "contrast": {
+            'prob': 0,
+            'min_factor': 0.2,
+            'max_factor': 0.1
+        },
         # "piecewise_affine": {
         #     'scale': 2
         # },
-        # "elastic_transform": {
-        #     'alpha': 5,
-        #     'sigma': 10
-        # },
-        #"intensity_multiplication": 0.2,
-        # "coarse_dropout": {
-        #     "rate": 0.2,
-        #     "size_percent": [0.10, 0.30],
-        #     "per_channel": True
-        # }
+        "elastic_transform": {
+            'alpha': 5,
+            'sigma': 10
+        },
+        # "intensity_multiplication": 0.2,
+        "coarse_dropout": {
+            "rate": 0.2,
+            "size_percent": [0.10, 0.30],
+            "per_channel": True
+        },
+        "gaussian_noise": {
+            "prob": 0.5,
+            "sigma": 0.05
+        },
+        "speckle_noise": {
+            "prob": 0.5,
+            "sigma": 0.05
+        }
     }
 
     # If the model outputs smaller result (x,y)-wise than the input
