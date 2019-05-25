@@ -192,7 +192,7 @@ def get_validation_split(data_file, training_file, validation_file, test_file, d
         test_list = [0, 10, 20]
         # training_list, validation_list = split_list(sample_list, split=data_split)
         validation_list = [6, 12, 16]
-        training_list = [1, 3, 5, 7, 9, 13, 14, 15, 17, 18, 21, 22, 23, 24, 25, 26, 19, 11, 8, 7, 4, 2]
+        training_list = [1, 3, 5, 9, 13, 14, 15, 17, 18, 21, 22, 23, 24, 25, 26, 19, 11, 8, 7, 4, 2]
         # random.shuffle(training_list)
         # training_list = training_list[:22]
         pickle_dump(training_list, training_file)
