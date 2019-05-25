@@ -89,12 +89,30 @@ def flip_image(affine, axis):
 def shot_noise(data):
     mm_scaler = MinMaxScaler((0, 1))
     data = mm_scaler.fit_transform(data)
+    # TODO: remove hardcoded quantization number :(
+    data = np.floor(data * 1023) / 1023  # quantization of the data is needed before poisson noise
+    # TODO: check if clip=True really needed
     data = random_noise(data, mode='poisson', clip=True)
     return mm_scaler.inverse_transform(data)
 
 
+def add_gaussian_noise(data, sigma):
+    mm_scaler = MinMaxScaler((0, 1))
+    data = mm_scaler.fit_transform(data)
+    new_data = random_noise(data, mode='gaussian', clip=True, var=sigma**2)
+    return mm_scaler.inverse_transform(new_data)
+
+
+def add_speckle_noise(data, sigma):
+    mm_scaler = MinMaxScaler((0, 1))
+    data = mm_scaler.fit_transform(data)
+    new_data = random_noise(data, mode='speckle', clip=True, var=sigma**2)
+    return mm_scaler.inverse_transform(new_data)
+
+
 def apply_gaussian_filter(data, sigma):
     return gaussian(data, sigma=sigma)
+
 
 def apply_coarse_dropout(data, rate, size_percent, per_channel=True):
     mm_scaler = MinMaxScaler((0, 255))
@@ -102,30 +120,54 @@ def apply_coarse_dropout(data, rate, size_percent, per_channel=True):
     new_data = iaa.CoarseDropout(p=rate, size_percent=size_percent, per_channel=per_channel).augment_image(data)
     return mm_scaler.inverse_transform(new_data)
 
+
 def contrast_augment(data, min_per, max_per):
     # in_range = (np.percentile(data, q=min_per), np.percentile(data, q=max_per))
     in_range = (min_per, max_per)
     return exposure.rescale_intensity(data, in_range=in_range, out_range='image')
 
 
-def apply_piecewise_affine(data, truth, scale):
+def apply_piecewise_affine(data, truth, prev_truth, mask, scale):
     rs = np.random.RandomState()
     vol_pa_transform = iaa.PiecewiseAffine(scale, nb_cols=2, nb_rows=2, order=1, random_state=rs, deterministic=True)
-    mask_pa_transform = iaa.PiecewiseAffine(scale, nb_cols=2, nb_rows=2, order=0, random_state=rs, deterministic=True)
+    truth_pa_transform = iaa.PiecewiseAffine(scale, nb_cols=2, nb_rows=2, order=0, random_state=rs, deterministic=True)
     data = vol_pa_transform.augment_image(data)
-    truth = mask_pa_transform.augment_image(truth)
-    return data, truth
+    truth = truth_pa_transform.augment_image(truth)
+
+    if prev_truth is not None:
+        prev_truth_pa_transform = iaa.PiecewiseAffine(scale, nb_cols=2, nb_rows=2, order=0, random_state=rs,
+                                                      deterministic=True)
+        prev_truth = prev_truth_pa_transform.augment_image(prev_truth)
+
+    if mask is not None:
+        mask_pa_transform = iaa.PiecewiseAffine(scale, nb_cols=2, nb_rows=2, order=0, random_state=rs,
+                                                deterministic=True)
+        mask = mask_pa_transform.augment_image(mask)
+
+    return data, truth, prev_truth, mask
 
 
-def apply_elastic_transform(data, truth, alpha, sigma):
+def apply_elastic_transform(data, truth, prev_truth, mask, alpha, sigma):
     rs = np.random.RandomState()
     vol_et_transform = iaa.ElasticTransformation(alpha=alpha, sigma=sigma, order=1, random_state=rs, deterministic=True,
                                                  mode="nearest")
-    mask_et_transform = iaa.ElasticTransformation(alpha=alpha, sigma=sigma, order=0, random_state=rs,
-                                                  deterministic=True, mode="nearest")
+    truth_et_transform = iaa.ElasticTransformation(alpha=alpha, sigma=sigma, order=0, random_state=rs,
+                                                   deterministic=True, mode="nearest")
+
     data = vol_et_transform.augment_image(data)
-    truth = mask_et_transform.augment_image(truth)
-    return data, truth
+    truth = truth_et_transform.augment_image(truth)
+
+    if prev_truth is not None:
+        prev_truth_et_transform = iaa.ElasticTransformation(alpha=alpha, sigma=sigma, order=0, random_state=rs,
+                                                            deterministic=True, mode="nearest")
+        prev_truth = prev_truth_et_transform.augment_image(prev_truth)
+
+    if mask is not None:
+        mask_et_transform = iaa.ElasticTransformation(alpha=alpha, sigma=sigma, order=0, random_state=rs,
+                                                      deterministic=True, mode="nearest")
+        mask = mask_et_transform.augment_image(mask)
+
+    return data, truth, prev_truth, mask
 
 
 def random_scale_factor(n_dim=3, mean=1, std=0.25):
@@ -175,12 +217,24 @@ def random_flip_dimensions(n_dim, flip_factor):
     ]
 
 
-def augment_data(data, truth, data_min, data_max, pred=None, scale_deviation=None, iso_scale_deviation=None, rotate_deviation=None,
-                 translate_deviation=None, flip=None, contrast_deviation=None, poisson_noise=None,
+def transpose_it(data, truth_data, prev_truth_data, mask_data):
+    data = data.transpose([1, 0, 2])
+    truth_data = truth_data.transpose([1, 0, 2])
+    if prev_truth_data:
+        prev_truth_data = prev_truth_data.transpose([1, 0, 2])
+    if mask_data:
+        mask_data = mask_data.transpose([1, 0, 2])
+    return data, truth_data, prev_truth_data, mask_data
+
+
+def augment_data(data, truth, data_min, data_max, pred=None, pred_range=None, mask=None, scale_deviation=None,
+                 iso_scale_deviation=None, rotate_deviation=None, translate_deviation=None, flip=None,
+                 contrast_deviation=None, poisson_noise=None, gaussian_noise=None, speckle_noise=None,
                  piecewise_affine=None, elastic_transform=None, intensity_multiplication_range=None,
                  gaussian_filter=None, coarse_dropout=None, data_range=None, truth_range=None, prev_truth_range=None,
-                 pred_range=None):
-    n_dim = len(truth.shape)
+                 transpose_prob=0.5):
+
+    n_dim = len(data.shape)
     if scale_deviation:
         scale_factor = random_scale_factor(n_dim, std=scale_deviation)
     else:
@@ -193,6 +247,7 @@ def augment_data(data, truth, data_min, data_max, pred=None, scale_deviation=Non
         scale_factor[1] *= iso_scale_factor
     else:
         iso_scale_factor = None
+
     if rotate_deviation:
         rotate_factor = random_rotation_angle(n_dim, std=rotate_deviation)
         rotate_factor = np.deg2rad(rotate_factor)
@@ -217,6 +272,14 @@ def augment_data(data, truth, data_min, data_max, pred=None, scale_deviation=Non
         apply_poisson_noise = poisson_noise > np.random.random()
     else:
         apply_poisson_noise = False
+    if gaussian_noise is not None:
+        apply_gaussian_noise = gaussian_noise["prob"] > np.random.random()
+    else:
+        apply_gaussian_noise = False
+    if speckle_noise is not None:
+        apply_speckle_noise = speckle_noise["prob"] > np.random.random()
+    else:
+        apply_speckle_noise = False
     if gaussian_filter is not None and gaussian_filter["prob"] > 0:
         gaussian_sigma = gaussian_filter["max_sigma"] * np.random.random()
         apply_gaussian = gaussian_filter["prob"] > np.random.random()
@@ -238,6 +301,10 @@ def augment_data(data, truth, data_min, data_max, pred=None, scale_deviation=Non
     if coarse_dropout is not None:
         coarse_dropout_rate = coarse_dropout['rate']
         coarse_dropout_size = coarse_dropout['size_percent']
+    if transpose_prob is not None and transpose_prob > 0:
+        transpose = np.random.random() > transpose_prob
+    else:
+        transpose = 0
 
     image, affine = data, np.eye(4)
     distorted_data, distorted_affine = distort_image(image, affine,
@@ -285,12 +352,36 @@ def augment_data(data, truth, data_min, data_max, pred=None, scale_deviation=Non
         pred_data = interpolate_affine_range(distorted_pred_data, distorted_pred_affine,
                                              pred_range, order=0, mode='constant', cval=0)
 
+    if mask is None:
+        mask_data = None
+    else:
+        mask_image, mask_affine = mask, np.eye(4)
+        distorted_mask_data, distorted_mask_affine = distort_image(mask_image, mask_affine,
+                                                                   flip_axis=flip_axis,
+                                                                   scale_factor=scale_factor,
+                                                                   rotate_factor=rotate_factor,
+                                                                   translate_factor=translate_factor)
+        if truth_range is None:
+            mask_data = resample_to_img(get_image(distorted_mask_data, distorted_mask_affine), mask_image,
+                                        interpolation="nearest", copy=False,
+                                        clip=True).get_data()
+        else:
+            mask_data = interpolate_affine_range(distorted_mask_data, distorted_mask_affine,
+                                                 truth_range, order=0, mode='constant', cval=0)
+
+    # TODO - include prediction if exists
     if piecewise_affine_scale > 0:
-        data, truth = apply_piecewise_affine(data, truth, piecewise_affine_scale)
-
+        data, truth_data, prev_truth_data, mask_data = apply_piecewise_affine(data, truth_data,
+                                                                              prev_truth_data, mask_data,
+                                                                              piecewise_affine_scale)
+    # TODO - include prediction if exists
     if elastic_transform_scale > 0:
-        data, truth = apply_elastic_transform(data, truth, elastic_transform_scale, elastic_transform["sigma"])
+        data, truth_data, prev_truth_data, mask_data = apply_elastic_transform(data, truth_data,
+                                                                               prev_truth_data, mask_data,
+                                                                               elastic_transform_scale,
+                                                                               elastic_transform["sigma"])
 
+    # TODO: should all this be applied to pred as well?
     if contrast_deviation is not None:
         data = contrast_augment(data, contrast_min_val, contrast_max_val)
 
@@ -303,10 +394,21 @@ def augment_data(data, truth, data_min, data_max, pred=None, scale_deviation=Non
     if apply_poisson_noise:
         data = shot_noise(data)
 
-    if coarse_dropout is not None:
-        data = apply_coarse_dropout(data, rate=coarse_dropout_rate, size_percent=coarse_dropout_size, per_channel=coarse_dropout["per_channel"])
+    if apply_speckle_noise:
+        data = add_speckle_noise(data, speckle_noise["sigma"])
 
-    return data, truth_data, prev_truth_data, pred_data
+    if apply_gaussian_noise:
+        data = add_gaussian_noise(data, gaussian_noise["sigma"])
+
+    if coarse_dropout is not None:
+        data = apply_coarse_dropout(data, rate=coarse_dropout_rate, size_percent=coarse_dropout_size,
+                                    per_channel=coarse_dropout["per_channel"])
+
+    # TODO - include prediction if exists
+    if transpose:
+        data, truth_data, prev_truth_data, mask_data = transpose_it(data, truth_data, prev_truth_data, mask_data)
+
+    return data, truth_data, prev_truth_data, pred_data, mask_data
 
 
 def generate_permutation_keys():
