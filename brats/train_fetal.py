@@ -21,8 +21,7 @@ parser.add_argument("--overwrite_config", help="overwrite saved config",
 parser.add_argument("--config_dir", help="specifies config dir path",
                     type=str, required=False, default='../../../../../datadrive/configs')
 parser.add_argument("--split_dir", help="Name of split folder",
-
-                        type=str, required=False, default='../debug_split')
+                    type=str, required=False, default='../debug_split')
 parser.add_argument("--experiment_name", help="Name of experiment folder",
                     type=str, required=False, default="experiment_all_samples") #datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")) # '2019_02_11_20_40') #datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")) #default=datetime.datetime.now().strftime("%Y_%m_%d_%H_%M"))
 parser.add_argument("--imitate_experiment", help="Name of experiment folder to imitate",
@@ -146,10 +145,6 @@ else:
             "size_percent": [0.10, 0.30],
             "per_channel": True
         },
-        "gaussian_noise": {
-            "prob": 0.5,
-            "sigma": 0.05
-        },
         "speckle_noise": {
             "prob": 0.5,
             "sigma": 0.05
@@ -208,7 +203,7 @@ else:
     config["training_file"] = os.path.join(config["split_dir"], "training_ids.pkl")
     config["validation_file"] = os.path.join(config["split_dir"], "validation_ids.pkl")
     config["test_file"] = os.path.join(config["split_dir"], "test_ids.pkl")
-    config["overwrite"] = True  # If True, will override previous files. If False, will use previously written files.
+    config["overwrite"] = False  # If True, will override previous files. If False, will use previously written files.
 
     if config['3D']:
         config["input_shape"] = [1] + list(config["input_shape"])

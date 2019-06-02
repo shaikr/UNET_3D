@@ -302,7 +302,8 @@ def add_data(x_list, y_list, data_file, index, truth_index, truth_size=1, augmen
                                                gaussian_filter=augment.get("gaussian_filter", None),
                                                coarse_dropout=augment.get("coarse_dropout", None),
                                                data_range=data_range, truth_range=truth_range,
-                                               prev_truth_range=prev_truth_range, pred_range=pred_range)
+                                               prev_truth_range=prev_truth_range, pred_range=pred_range,
+                                               transpose_prob=augment.get("transpose_prob", 0))
     else:
         data, truth, prev_truth, real_pred = \
             extract_patch(data, patch_corner, patch_shape, truth,

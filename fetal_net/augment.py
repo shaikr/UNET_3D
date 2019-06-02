@@ -243,10 +243,10 @@ def transpose_it(data, truth_data, prev_truth_data, pred_data, mask_data):
 
 def augment_data(data, truth, data_min, data_max, pred=None, pred_range=None, mask=None, scale_deviation=None,
                  iso_scale_deviation=None, rotate_deviation=None, translate_deviation=None, flip=None,
-                 contrast_deviation=None, poisson_noise=None, gaussian_noise=None, speckle_noise=None,
+                 contrast_deviation=None, poisson_noise=None, speckle_noise=None,
                  piecewise_affine=None, elastic_transform=None, intensity_multiplication_range=None,
                  gaussian_filter=None, coarse_dropout=None, data_range=None, truth_range=None, prev_truth_range=None,
-                 transpose_prob=0.5):
+                 transpose_prob=0):
 
     n_dim = len(data.shape)
     if scale_deviation:
@@ -286,10 +286,6 @@ def augment_data(data, truth, data_min, data_max, pred=None, pred_range=None, ma
         apply_poisson_noise = poisson_noise > np.random.random()
     else:
         apply_poisson_noise = False
-    if gaussian_noise is not None:
-        apply_gaussian_noise = gaussian_noise["prob"] > np.random.random()
-    else:
-        apply_gaussian_noise = False
     if speckle_noise is not None:
         apply_speckle_noise = speckle_noise["prob"] > np.random.random()
     else:
@@ -316,9 +312,9 @@ def augment_data(data, truth, data_min, data_max, pred=None, pred_range=None, ma
         coarse_dropout_rate = coarse_dropout['rate']
         coarse_dropout_size = coarse_dropout['size_percent']
     if transpose_prob is not None and transpose_prob > 0:
-        transpose = np.random.random() > transpose_prob
+        transpose = transpose_prob > np.random.random()
     else:
-        transpose = 0
+        transpose = False
 
     image, affine = data, np.eye(4)
     distorted_data, distorted_affine = distort_image(image, affine,
@@ -394,7 +390,6 @@ def augment_data(data, truth, data_min, data_max, pred=None, pred_range=None, ma
                                                                                mask_data, elastic_transform_scale,
                                                                                elastic_transform["sigma"])
 
-    # TODO: should all this be applied to pred as well?
     if contrast_deviation is not None:
         data = contrast_augment(data, contrast_min_val, contrast_max_val)
 
@@ -409,9 +404,6 @@ def augment_data(data, truth, data_min, data_max, pred=None, pred_range=None, ma
 
     if apply_speckle_noise:
         data = add_speckle_noise(data, speckle_noise["sigma"])
-
-    if apply_gaussian_noise:
-        data = add_gaussian_noise(data, gaussian_noise["sigma"])
 
     if coarse_dropout is not None:
         data = apply_coarse_dropout(data, rate=coarse_dropout_rate, size_percent=coarse_dropout_size,
