@@ -42,11 +42,11 @@ elif Path(os.path.join(opts.to_imitate_dir, 'config.json')).exists():
     print('Imitating previous config.json from {}'.format(opts.to_imitate_dir))
     with open(os.path.join(opts.to_imitate_dir, 'config.json')) as f:
         config = json.load(f)
-    config["skip_blank_val"] = True  # if True, then patches without any target will be skipped
-    if 'gamma' in config:
-        print(config['gamma'])
-        print(config['alpha'])
-        os.exit()
+    # config["skip_blank_val"] = True  # if True, then patches without any target will be skipped
+    # if 'gamma' in config:
+    #     print(config['gamma'])
+    #     print(config['alpha'])
+    #     os.exit()
     config["base_dir"] = opts.config_dir
     Path(config["base_dir"]).mkdir(parents=True, exist_ok=True)
     Path(config["split_dir"]).mkdir(parents=True, exist_ok=True)
@@ -124,8 +124,8 @@ else:
         "rotate": (0, 0, 90),  # std of angle rotation, switch to None if you want no rotation
         "poisson_noise": 1,
         "gaussian_filter": {
-            "prob": 0.0,
-            "max_sigma": 1
+            "prob": 0.5,
+            "max_sigma": 0.05
         },
         "contrast": {
             'prob': 0,
@@ -232,7 +232,7 @@ def fetch_training_data_files(return_subject_ids=False):
         return training_data_files
 
 
-def main(overwrite=False):
+def main_train(config, overwrite=False):
     # convert input images into an hdf5 file
     if overwrite or not os.path.exists(config["data_file"]):
         training_files, subject_ids = fetch_training_data_files(return_subject_ids=True)
@@ -305,4 +305,4 @@ def main(overwrite=False):
 
 
 if __name__ == "__main__":
-    main(overwrite=config["overwrite"])
+    main_train(config=config, overwrite=config["overwrite"])
