@@ -62,7 +62,7 @@ def run_training_size_exp(subject_ids, exp_names_prefix, conf_to_imitate=None):
                     cmd = f"python train_fetal.py --experiment_name='{cur_exp_name}'"
                 else:
                     cmd = f"python train_fetal.py --experiment_name='{cur_exp_name}'" \
-                          f" --imitate_experiment='{conf_to_imitate}"
+                          f" --imitate_experiment='{conf_to_imitate}'"
                 print(cmd)
                 os.system(cmd)
 
