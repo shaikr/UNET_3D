@@ -162,7 +162,34 @@ def patch_wise_prediction(model: Model, data, patch_shape, overlap_factor=0, bat
                            z_pad[0]: z_pad[1]]
 
     assert np.array_equal(predicted_count.shape[:-1], data[0].shape), 'prediction shape wrong'
-    return predicted_output / predicted_count
+
+    final_prediction = predicted_output / predicted_count
+    prediction_variance = np.zeros(data_shape)
+    b_iter = batch_iterator(indices, batch_size, data_0, patch_shape,
+                            truth_0, prev_truth_index, truth_patch_shape,
+                            pred_0, pred_index, pred_patch_shape)
+    tb_iter = iter(ThreadedGenerator(b_iter, queue_maxsize=50))
+    with tqdm(total=len(indices)) as pbar:
+        for [curr_batch, batch_indices] in tb_iter:
+            curr_batch = np.asarray(curr_batch)
+            if is3d:
+                curr_batch = np.expand_dims(curr_batch, 1)
+            prediction = predict(model, curr_batch, permute=permute)
+
+            if is3d:
+                prediction = prediction.transpose([0, 2, 3, 4, 1])
+            else:
+                prediction = np.expand_dims(prediction, -2)
+
+            for predicted_patch, predicted_index in zip(prediction, batch_indices):
+                # predictions.append(predicted_patch)
+                x, y, z = predicted_index
+                x_len, y_len, z_len = predicted_patch.shape[:-1]
+                prediction_variance[x:x + x_len, y:y + y_len, z:z + z_len, :] += \
+                    np.power(predicted_patch[:, :, :, 0] - final_prediction[x:x + x_len, y:y + y_len, z:z + z_len], 2)
+            pbar.update(batch_size)
+
+    return final_prediction, prediction_variance / predicted_count
     # return reconstruct_from_patches(predictions, patch_indices=indices, data_shape=data_shape)
 
 
@@ -270,7 +297,7 @@ def run_validation_case(data_index, output_dir, model, data_file, training_modal
         print("Warning - went in where it wasn't expected!!!!!")
         prediction = predict(model, test_data, permute=permute)
     else:
-        prediction = \
+        prediction, prediction_var = \
             patch_wise_prediction(model=model, data=test_data, overlap_factor=overlap_factor,
                                   patch_shape=patch_shape, permute=permute,
                                   truth_data=test_truth_data, prev_truth_index=prev_truth_index, prev_truth_size=prev_truth_size,
@@ -279,6 +306,8 @@ def run_validation_case(data_index, output_dir, model, data_file, training_modal
         prediction = prediction[..., 1]
     prediction = prediction.squeeze()
     prediction_image = get_image(prediction)
+    prediction_var = prediction_var.squeeze()
+    prediction_var_image = get_image(prediction_var)
 
     name_counter = 0
     if isinstance(prediction_image, list):
@@ -290,10 +319,13 @@ def run_validation_case(data_index, output_dir, model, data_file, training_modal
             image.to_filename(filename)
     else:
         filename = os.path.join(output_dir, "prediction.nii.gz")
+        var_fname = os.path.join(output_dir, "prediction_variance.nii.gz")
         while os.path.exists(filename):
             name_counter += 1
             filename = os.path.join(output_dir, "prediction_{0}.nii.gz".format(name_counter))
+            var_fname = os.path.join(output_dir, "prediction_variance_{0}.nii.gz".format(name_counter))
         prediction_image.to_filename(filename)
+        prediction_var_image.to_filename(var_fname)
     return filename
 
 
