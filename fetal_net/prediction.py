@@ -6,6 +6,7 @@ import numpy as np
 import tables
 from keras import Model
 from tqdm import tqdm
+from scipy import ndimage
 
 from brats.utils import get_last_model_path
 from fetal_net.utils.threaded_generator import ThreadedGenerator
@@ -14,7 +15,78 @@ from .training import load_old_model
 from .utils import pickle_load
 from .utils.patches import reconstruct_from_patches, get_patch_from_3d_data, compute_patch_indices, \
     get_set_of_patch_indices
-from .augment import permute_data, generate_permutation_keys, reverse_permute_data
+from .augment import permute_data, generate_permutation_keys, reverse_permute_data, contrast_augment
+
+
+def flip_it(data_, axes):
+    for ax in axes:
+        data_ = np.flip(data_, ax)
+    return data_
+
+
+def predict_augment(data, model, overlap_factor, patch_shape, num_augments=32):
+    data_max = data.max()
+    data_min = data.min()
+    data = data.squeeze()
+
+    order = 2
+    cval = np.percentile(data, q=1)
+
+    predictions = []
+    for _ in range(num_augments):
+        # pixel-wise augmentations
+        val_range = data_max - data_min
+        contrast_min_val = data_min + 0.10 * np.random.uniform(-1, 1) * val_range
+        contrast_max_val = data_max + 0.10 * np.random.uniform(-1, 1) * val_range
+        curr_data = contrast_augment(data, contrast_min_val, contrast_max_val)
+
+        # spatial augmentations
+        rotate_factor = np.random.uniform(-30, 30)
+        to_flip = np.arange(0, 3)[np.random.choice([True, False], size=3)]
+        to_transpose = np.random.choice([True, False])
+
+        curr_data = flip_it(curr_data, to_flip)
+
+        if to_transpose:
+            curr_data = curr_data.transpose([1, 0, 2])
+
+        curr_data = ndimage.rotate(curr_data, rotate_factor, order=order, reshape=False, mode='constant', cval=cval)
+
+        curr_prediction, _ = patch_wise_prediction(model=model, data=curr_data[np.newaxis, ...], overlap_factor=overlap_factor, patch_shape=patch_shape).squeeze()
+
+        curr_prediction = ndimage.rotate(curr_prediction, -rotate_factor, order=0, reshape=False, mode='constant', cval=0)
+
+        if to_transpose:
+            curr_prediction = curr_prediction.transpose([1, 0, 2])
+
+        curr_prediction = flip_it(curr_prediction, to_flip)
+        predictions += [curr_prediction.squeeze()]
+
+    res = np.stack(predictions, axis=0)
+    return res
+
+
+def predict_flips(data, model, overlap_factor, config):
+    def powerset(iterable):
+        "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
+        s = list(iterable)
+        return itertools.chain.from_iterable(itertools.combinations(s, r) for r in range(0, len(s) + 1))
+
+    def predict_it(data_, axes=()):
+        data_ = flip_it(data_, axes)
+        curr_pred = \
+            patch_wise_prediction(model=model,
+                                  data=np.expand_dims(data_.squeeze(), 0),
+                                  overlap_factor=overlap_factor,
+                                  patch_shape=config["patch_shape"] + [config["patch_depth"]]).squeeze()
+        curr_pred = flip_it(curr_pred, axes)
+        return curr_pred
+
+    predictions = []
+    for axes in powerset([0, 1, 2]):
+        predictions += [predict_it(data, axes).squeeze()]
+
+    return predictions
 
 
 def get_set_of_patch_indices_full(start, stop, step):
@@ -258,7 +330,7 @@ def multi_class_prediction(prediction, affine):
 
 def run_validation_case(data_index, output_dir, model, data_file, training_modalities, patch_shape,
                         overlap_factor=0, permute=False, prev_truth_index=None, prev_truth_size=None,
-                        pred_index=None, pred_size=None):
+                        pred_index=None, pred_size=None, use_augmentations=False):
     """
     Runs a test case and writes predicted images to file.
     :param data_index: Index from of the list of test cases to get an image prediction from.
@@ -297,17 +369,21 @@ def run_validation_case(data_index, output_dir, model, data_file, training_modal
         print("Warning - went in where it wasn't expected!!!!!")
         prediction = predict(model, test_data, permute=permute)
     else:
-        prediction, prediction_var = \
-            patch_wise_prediction(model=model, data=test_data, overlap_factor=overlap_factor,
-                                  patch_shape=patch_shape, permute=permute,
-                                  truth_data=test_truth_data, prev_truth_index=prev_truth_index, prev_truth_size=prev_truth_size,
-                                  pred_data=test_pred_data, pred_index=pred_index, pred_size=pred_size)[np.newaxis]
-    if prediction.shape[-1] > 1:
-        prediction = prediction[..., 1]
+        if use_augmentations:
+            prediction = predict_augment(data=test_data, model=model, overlap_factor=overlap_factor,
+                                         patch_shape=patch_shape)
+        else:
+            prediction, prediction_var = \
+                patch_wise_prediction(model=model, data=test_data, overlap_factor=overlap_factor,
+                                      patch_shape=patch_shape, permute=permute,
+                                      truth_data=test_truth_data, prev_truth_index=prev_truth_index, prev_truth_size=prev_truth_size,
+                                      pred_data=test_pred_data, pred_index=pred_index, pred_size=pred_size)[np.newaxis]
+    # if prediction.shape[-1] > 1:
+    #     prediction = prediction[..., 1]
     prediction = prediction.squeeze()
     prediction_image = get_image(prediction)
-    prediction_var = prediction_var.squeeze()
-    prediction_var_image = get_image(prediction_var)
+    # prediction_var = prediction_var.squeeze()
+    # prediction_var_image = get_image(prediction_var)
 
     name_counter = 0
     if isinstance(prediction_image, list):
@@ -319,19 +395,20 @@ def run_validation_case(data_index, output_dir, model, data_file, training_modal
             image.to_filename(filename)
     else:
         filename = os.path.join(output_dir, "prediction.nii.gz")
-        var_fname = os.path.join(output_dir, "prediction_variance.nii.gz")
+        # var_fname = os.path.join(output_dir, "prediction_variance.nii.gz")
         while os.path.exists(filename):
             name_counter += 1
             filename = os.path.join(output_dir, "prediction_{0}.nii.gz".format(name_counter))
             var_fname = os.path.join(output_dir, "prediction_variance_{0}.nii.gz".format(name_counter))
         prediction_image.to_filename(filename)
-        prediction_var_image.to_filename(var_fname)
+        # prediction_var_image.to_filename(var_fname)
     return filename
 
 
 def run_validation_cases(validation_keys_file, model_file, training_modalities, hdf5_file, patch_shape,
                          output_dir=".", overlap_factor=0, permute=False,
-                         prev_truth_index=None, prev_truth_size=None, pred_index=None, pred_size=None):
+                         prev_truth_index=None, prev_truth_size=None, pred_index=None, pred_size=None,
+                         use_augmentations=False):
     file_names = []
     validation_indices = pickle_load(validation_keys_file)
     model = load_old_model(get_last_model_path(model_file))
@@ -345,7 +422,8 @@ def run_validation_cases(validation_keys_file, model_file, training_modalities, 
             run_validation_case(data_index=index, output_dir=case_directory, model=model, data_file=data_file,
                                 training_modalities=training_modalities, overlap_factor=overlap_factor,
                                 permute=permute, patch_shape=patch_shape, prev_truth_index=prev_truth_index,
-                                prev_truth_size=prev_truth_size, pred_index=pred_index, pred_size=pred_size))
+                                prev_truth_size=prev_truth_size, pred_index=pred_index, pred_size=pred_size,
+                                use_augmentations=use_augmentations))
     data_file.close()
     return file_names
 

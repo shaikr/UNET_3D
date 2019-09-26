@@ -12,7 +12,7 @@ import argparse
 from fetal_net.utils.cut_relevant_areas import find_bounding_box, cut_bounding_box
 
 
-def main(config, split='test', overlap_factor=1, config2=None):
+def main(config, split='test', overlap_factor=1, config2=None, use_augmentations=False):
     prediction_dir = os.path.abspath(os.path.join(config['base_dir'], 'predictions', split))
 
     indices_file = {
@@ -30,7 +30,8 @@ def main(config, split='test', overlap_factor=1, config2=None):
                          prev_truth_index=config["prev_truth_index"],
                          prev_truth_size=config["prev_truth_size"],
                          pred_index=config["pred_index"],
-                         pred_size=config["pred_size"])
+                         pred_size=config["pred_size"],
+                         use_augmentations=use_augmentations)
 
 
 if __name__ == "__main__":
@@ -41,6 +42,8 @@ if __name__ == "__main__":
                         type=str, default='test')
     parser.add_argument("--overlap_factor", help="specifies overlap between prediction patches",
                         type=float, default=0.9)
+    parser.add_argument("--use_augmentations", help="specifies whether to predict on augmentations",
+                        type=int, default=0)
     opts = parser.parse_args()
 
     with open(os.path.join(opts.config_dir, 'config.json')) as f:
