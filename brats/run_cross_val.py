@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import random
+import numpy as np
 import pickle
 import tables
 import os
@@ -25,22 +26,25 @@ def create_files(training_list, validation_list, test_list):
 def run_cross_val_training(existing_data_file_path, exp_names_prefix, conf_to_imitate=None):
     data_file = tables.open_file(existing_data_file_path, "r")
     all_list = list(range(len(data_file.root.subject_ids)))
-    test_list = [5, 6, 23]  # all_list_temp[:3]
+    data_file.close()
+
     print('# of subjects: {}'.format(len(all_list)))
     random.shuffle(all_list)
     all_list_temp = all_list
-    all_list_temp.remove(5)
-    all_list_temp.remove(6)
-    all_list_temp.remove(23)
+    # all_list_temp.remove(5)
+    # all_list_temp.remove(6)
+    # all_list_temp.remove(23)
 
     all_experiement_names = []
 
-    # TODO: currently assumes 27 scans
-    for i in range(9):
-        print(f"In round {i+1} out of 9")
+    n_test = 3
+    n_iters = int(np.ceil(len(all_list_temp) / n_test))
+    for i in range(n_iters):
+        print("In round {} out of {}".format(i+1, n_iters))
 
-        validation_list = all_list_temp[:3]
-        training_list = all_list_temp[3:]
+        test_list = all_list_temp[:3]  # [5, 6, 23]
+        validation_list = all_list_temp[3:6]
+        training_list = all_list_temp[6:]
 
         try:
             delete_existing_files()
@@ -54,25 +58,27 @@ def run_cross_val_training(existing_data_file_path, exp_names_prefix, conf_to_im
 
         print('Created files, now training')
         if conf_to_imitate is None:
-            cmd = f"python train_fetal.py --experiment_name='{exp_names_prefix}_cross_val_train_{i+1}'"
+            cmd = "python train_fetal.py --experiment_name='{}_cross_val_train_{}'".format(exp_names_prefix, i+1)
         else:
-            cmd = f"python train_fetal.py --experiment_name='{exp_names_prefix}_cross_val_train_{i+1}'" \
-                  f" --imitate_experiment='{conf_to_imitate}"
+            cmd = "python train_fetal.py --experiment_name='{}_cross_val_train_{}'" \
+                  " --imitate_experiment='{}'".format(exp_names_prefix, i+1, conf_to_imitate)
         print(cmd)
         os.system(cmd)
 
         print("Finished training, now running on test")
-        conf_dir = '../../../../../datadrive/configs/' + f'{exp_names_prefix}_cross_val_train_{i+1}'
-        cmd = f"python predict.py --split='test' --config='{conf_dir}'"
+        conf_dir = '../../../../../datadrive/configs/' + '{}_cross_val_train_{}'.format(exp_names_prefix, i+1)
+        cmd = "python predict.py --split='test' --config='{}'".format(conf_dir)
         print(cmd)
         os.system(cmd)
 
         print('Finished forward')
         all_list_temp = all_list_temp[3:] + all_list_temp[:3]
-        all_experiement_names = all_experiement_names + [f'{exp_names_prefix}_cross_val_train_{i+1}']
+        all_experiement_names = all_experiement_names + ['{}_cross_val_train_{}'.format(exp_names_prefix, i+1)]
     return all_experiement_names
 
 
 conf_to_imitate = r"new_arch_exp_64_64_5"
 existing_data_fpath = r"/datadrive/configs/dump_folder/new_arch_exp_64_64_5/fetal_data.h5"
 exp_names_prefix = r"64_64_5_cross_val_train"
+run_cross_val_training(existing_data_file_path=existing_data_fpath, exp_names_prefix=exp_names_prefix, conf_to_imitate=conf_to_imitate)
+
