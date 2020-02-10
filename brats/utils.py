@@ -165,7 +165,7 @@ class MinMaxScaler(BaseEstimator, TransformerMixin):
             raise ValueError("Minimum of desired feature range must be smaller"
                              " than maximum. Got %s." % str(feature_range))
 
-        X = check_array(X, copy=self.copy, warn_on_dtype=True,
+        X = check_array(X, copy=self.copy, # warn_on_dtype=True,
                         estimator=self, dtype=FLOAT_DTYPES, ensure_2d=False, allow_nd=True)
 
         data_min = np.min(X)
