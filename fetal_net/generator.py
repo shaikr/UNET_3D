@@ -184,16 +184,19 @@ def get_validation_split(data_file, training_file, validation_file, test_file, d
     """
     if overwrite or not os.path.exists(training_file):
         print("Creating validation split...")
+        print("")
         nb_samples = len(data_file.root.data)
         sample_list = list(range(nb_samples))
         random.shuffle(sample_list)
-        test_list = [sample_list.pop()]
+        test_list = [23, 5, 6] # [sample_list.pop() for i in range(3)]
         print(test_list)
-        test_list = [0, 10, 20]
-        # training_list, validation_list = split_list(sample_list, split=data_split)
-        validation_list = [6, 12, 16]
-        training_list = [1, 3, 5, 9, 13, 14, 15, 17, 18, 21, 22, 23, 24, 25, 26, 19, 11, 8, 7, 4, 2]
-        # random.shuffle(training_list)
+        # test_list = [0, 10, 20]
+
+        sample_list = list(set(sample_list) - set(test_list))
+        training_list, validation_list = split_list(sample_list, split=0.85)
+        # validation_list = [6, 12, 16]
+        # training_list = [1, 3, 5, 9, 13, 14, 15, 17, 18, 21, 22, 23, 24, 25, 26, 19, 11, 8, 7, 4, 2]
+        random.shuffle(training_list)
         # training_list = training_list[:22]
         pickle_dump(training_list, training_file)
         pickle_dump(validation_list, validation_file)
@@ -286,7 +289,7 @@ def add_data(x_list, y_list, data_file, index, truth_index, truth_size=1, augmen
         else:
             pred_range = None
 
-        data, truth, prev_truth, real_pred = augment_data(data, truth,
+        data, truth, prev_truth, real_pred, _ = augment_data(data, truth,
                                                data_min=data_file.stats.min[index], data_max=data_file.stats.max[index],
                                                pred=pred,
                                                scale_deviation=augment.get('scale', None),
@@ -320,6 +323,7 @@ def add_data(x_list, y_list, data_file, index, truth_index, truth_size=1, augmen
     if drop_easy_patches:
         truth_mean = np.mean(truth[16:-16, 16:-16, :])
         if 1 - np.abs(truth_mean - 0.5) < np.random.random():
+            #print("Dropped - easy patch!!!")
             return
 
     if truth_downsample is not None and truth_downsample > 1:
@@ -336,6 +340,8 @@ def add_data(x_list, y_list, data_file, index, truth_index, truth_size=1, augmen
     if not skip_blank or np.any(truth != 0):
         x_list.append(data)
         y_list.append(truth)
+    else:
+        pass
 
 
 def extract_patch(data, patch_corner, patch_shape, truth, truth_index, truth_size, prev_truth_index=None,
