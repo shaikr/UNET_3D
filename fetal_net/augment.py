@@ -232,11 +232,11 @@ def random_flip_dimensions(n_dim, flip_factor):
 def transpose_it(data, truth_data, prev_truth_data, pred_data, mask_data):
     data = data.transpose([1, 0, 2])
     truth_data = truth_data.transpose([1, 0, 2])
-    if prev_truth_data:
+    if prev_truth_data is not None:
         prev_truth_data = prev_truth_data.transpose([1, 0, 2])
-    if pred_data:
+    if pred_data is not None:
         pred_data = pred_data.transpose([1, 0, 2])
-    if mask_data:
+    if mask_data is not None:
         mask_data = mask_data.transpose([1, 0, 2])
     return data, truth_data, prev_truth_data, pred_data, mask_data
 
@@ -384,6 +384,7 @@ def augment_data(data, truth, data_min, data_max, pred=None, pred_range=None, ma
         data, truth_data, prev_truth_data, pred_data, mask_data = apply_piecewise_affine(data, truth_data,
                                                                               prev_truth_data, pred_data,
                                                                               mask_data, piecewise_affine_scale)
+
     if elastic_transform_scale > 0:
         data, truth_data, prev_truth_data, pred_data, mask_data = apply_elastic_transform(data, truth_data,
                                                                                prev_truth_data, pred_data,
