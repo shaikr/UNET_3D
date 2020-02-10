@@ -75,3 +75,10 @@ def run_training_size_exp(subject_ids, exp_names_prefix, conf_to_imitate=None):
                 print('Finished forward')
                 all_experiment_names = all_experiment_names + [cur_exp_name]
     return all_experiment_names
+
+if __name__ == "__main__":
+    subject_ids = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
+    exp_names_prefix = ''
+    to_imit = 'experiment_no_augs'
+    run_training_size_exp(subject_ids, exp_names_prefix, to_imit)
+    
