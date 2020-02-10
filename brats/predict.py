@@ -37,16 +37,17 @@ def main(config, split='test', overlap_factor=1, config2=None, use_augmentations
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--config_dir", help="specifies config dir path",
-                        type=str, required=False, default='../../../../../datadrive/configs/2019_03_11_22_31')
+                        type=str, required=False, default='../../../../../datadrive/configs/trainset_experiment_2_val_20_train_0_iter')
+    #type=str, required=False, default='../../../../../datadrive/configs/trainset_experiment_0_val_20_train_0_iter')
     parser.add_argument("--split", help="What split to predict on? (test/val)",
                         type=str, default='test')
     parser.add_argument("--overlap_factor", help="specifies overlap between prediction patches",
-                        type=float, default=0.9)
+                        type=float, default=0.9) # 0.9
     parser.add_argument("--use_augmentations", help="specifies whether to predict on augmentations",
-                        type=int, default=0)
+                        type=bool, default=False) # False
     opts = parser.parse_args()
 
     with open(os.path.join(opts.config_dir, 'config.json')) as f:
         config = json.load(f)
 
-    main(config, opts.split, opts.overlap_factor)
+    main(config, opts.split, opts.overlap_factor, use_augmentations=opts.use_augmentations)
