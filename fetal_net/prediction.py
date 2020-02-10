@@ -24,7 +24,7 @@ def flip_it(data_, axes):
     return data_
 
 
-def predict_augment(data, model, overlap_factor, patch_shape, num_augments=32):
+def predict_augment(data, model, overlap_factor, patch_shape, num_augments=5):
     data_max = data.max()
     data_min = data.min()
     data = data.squeeze()
@@ -52,7 +52,9 @@ def predict_augment(data, model, overlap_factor, patch_shape, num_augments=32):
 
         curr_data = ndimage.rotate(curr_data, rotate_factor, order=order, reshape=False, mode='constant', cval=cval)
 
-        curr_prediction, _ = patch_wise_prediction(model=model, data=curr_data[np.newaxis, ...], overlap_factor=overlap_factor, patch_shape=patch_shape).squeeze()
+        curr_prediction, _ = patch_wise_prediction(model=model, data=curr_data[np.newaxis, ...], overlap_factor=overlap_factor, patch_shape=patch_shape)
+
+        curr_prediction = curr_prediction.squeeze()
 
         curr_prediction = ndimage.rotate(curr_prediction, -rotate_factor, order=0, reshape=False, mode='constant', cval=0)
 
@@ -237,29 +239,29 @@ def patch_wise_prediction(model: Model, data, patch_shape, overlap_factor=0, bat
 
     final_prediction = predicted_output / predicted_count
     prediction_variance = np.zeros(data_shape)
-    b_iter = batch_iterator(indices, batch_size, data_0, patch_shape,
-                            truth_0, prev_truth_index, truth_patch_shape,
-                            pred_0, pred_index, pred_patch_shape)
-    tb_iter = iter(ThreadedGenerator(b_iter, queue_maxsize=50))
-    with tqdm(total=len(indices)) as pbar:
-        for [curr_batch, batch_indices] in tb_iter:
-            curr_batch = np.asarray(curr_batch)
-            if is3d:
-                curr_batch = np.expand_dims(curr_batch, 1)
-            prediction = predict(model, curr_batch, permute=permute)
-
-            if is3d:
-                prediction = prediction.transpose([0, 2, 3, 4, 1])
-            else:
-                prediction = np.expand_dims(prediction, -2)
-
-            for predicted_patch, predicted_index in zip(prediction, batch_indices):
-                # predictions.append(predicted_patch)
-                x, y, z = predicted_index
-                x_len, y_len, z_len = predicted_patch.shape[:-1]
-                prediction_variance[x:x + x_len, y:y + y_len, z:z + z_len, :] += \
-                    np.power(predicted_patch[:, :, :, 0] - final_prediction[x:x + x_len, y:y + y_len, z:z + z_len], 2)
-            pbar.update(batch_size)
+    # b_iter = batch_iterator(indices, batch_size, data_0, patch_shape,
+    #                         truth_0, prev_truth_index, truth_patch_shape,
+    #                         pred_0, pred_index, pred_patch_shape)
+    # tb_iter = iter(ThreadedGenerator(b_iter, queue_maxsize=50))
+    # with tqdm(total=len(indices)) as pbar:
+    #     for [curr_batch, batch_indices] in tb_iter:
+    #         curr_batch = np.asarray(curr_batch)
+    #         if is3d:
+    #             curr_batch = np.expand_dims(curr_batch, 1)
+    #         prediction = predict(model, curr_batch, permute=permute)
+    #
+    #         if is3d:
+    #             prediction = prediction.transpose([0, 2, 3, 4, 1])
+    #         else:
+    #             prediction = np.expand_dims(prediction, -2)
+    #
+    #         for predicted_patch, predicted_index in zip(prediction, batch_indices):
+    #             # predictions.append(predicted_patch)
+    #             x, y, z = predicted_index
+    #             x_len, y_len, z_len = predicted_patch.shape[:-1]
+    #             prediction_variance[x:x + x_len, y:y + y_len, z:z + z_len, :] += \
+    #                 np.power(predicted_patch[:, :, :] - final_prediction[x:x + x_len, y:y + y_len, z:z + z_len], 2)
+    #         pbar.update(batch_size)
 
     return final_prediction, prediction_variance / predicted_count
     # return reconstruct_from_patches(predictions, patch_indices=indices, data_shape=data_shape)
@@ -347,6 +349,9 @@ def run_validation_case(data_index, output_dir, model, data_file, training_modal
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
+    # if os.path.exists(os.path.join(output_dir, "prediction.nii.gz")):
+    #     return os.path.join(output_dir, "prediction.nii.gz")
+
     test_data = np.asarray([data_file.root.data[data_index]])
     if prev_truth_index is not None:
         test_truth_data = np.asarray([data_file.root.truth[data_index]])
@@ -377,7 +382,7 @@ def run_validation_case(data_index, output_dir, model, data_file, training_modal
                 patch_wise_prediction(model=model, data=test_data, overlap_factor=overlap_factor,
                                       patch_shape=patch_shape, permute=permute,
                                       truth_data=test_truth_data, prev_truth_index=prev_truth_index, prev_truth_size=prev_truth_size,
-                                      pred_data=test_pred_data, pred_index=pred_index, pred_size=pred_size)[np.newaxis]
+                                      pred_data=test_pred_data, pred_index=pred_index, pred_size=pred_size) #[np.newaxis]
     # if prediction.shape[-1] > 1:
     #     prediction = prediction[..., 1]
     prediction = prediction.squeeze()
@@ -400,6 +405,7 @@ def run_validation_case(data_index, output_dir, model, data_file, training_modal
             name_counter += 1
             filename = os.path.join(output_dir, "prediction_{0}.nii.gz".format(name_counter))
             var_fname = os.path.join(output_dir, "prediction_variance_{0}.nii.gz".format(name_counter))
+        print("Saving to {}".format(filename))
         prediction_image.to_filename(filename)
         # prediction_var_image.to_filename(var_fname)
     return filename
@@ -411,6 +417,9 @@ def run_validation_cases(validation_keys_file, model_file, training_modalities, 
                          use_augmentations=False):
     file_names = []
     validation_indices = pickle_load(validation_keys_file)
+    # validation_indices = [23, 24, 7]  # 2
+    # validation_indices = [5, 11, 15] # 1
+    # validation_indices = [23, 5, 6] # 0
     model = load_old_model(get_last_model_path(model_file))
     data_file = tables.open_file(hdf5_file, "r")
     for index in validation_indices:
