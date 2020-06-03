@@ -7,6 +7,24 @@ from fetal_net.utils.utils import resize, read_image_files
 from .utils import crop_img, crop_img_to, read_image
 
 
+def auto_contrast_enhancement(img_as_np_orig, max_cutoff=0.999):
+    # get the new maximum level
+    img_max = np.max(img_as_np_orig.flatten())
+    img_min = np.min(img_as_np_orig.flatten()) # Assumes this will be 0 (?)
+    img_half = 0.5 * img_max
+    ww = np.quantile(img_as_np_orig, max_cutoff)
+    wl = ww / 2.0
+    out_range = [img_min, ww]
+    img_as_np = img_as_np_orig.copy()
+
+    img_as_np[img_as_np <= (wl - ww / 2.0)] = out_range[0]
+    # img_as_np[(img_as_np > (wl - ww / 2.0)) & (img_as_np <= (wl + ww / 2.0))] = \
+    #     ((img_as_np[(img_as_np > (wl - ww / 2.0)) & (img_as_np <= (wl + ww / 2.0))]
+    #       - (wl - img_half)) / (ww - img_max) + img_half) * (out_range[1] - out_range[0]) + out_range[0]
+    img_as_np[img_as_np > (wl + ww / 2.0)] = out_range[1]
+    return img_as_np
+
+
 def find_downsized_info(training_data_files, input_shape):
     foreground = get_complete_foreground(training_data_files)
     crop_slices = crop_img(foreground, return_slices=True, copy=True)
@@ -69,6 +87,12 @@ def normalize_data(data, mean, std):
     return data
 
 
+def minmax_norm(data):
+    min_ = data.min()
+    max_ = data.norm()
+    return (data - min_) / (max_ - min_)
+
+
 def normalize_data_storage(data_storage):
     means = list()
     stds = list()
@@ -89,4 +113,63 @@ def normalize_data_storage_each(data_storage):
         mean = data.mean(axis=(-1, -2, -3))
         std = data.std(axis=(-1, -2, -3))
         data_storage[index] = normalize_data(data, mean, std)
+    return data_storage, None, None
+
+
+def normalize_data_storage_each_minmax(data_storage):
+    for index in range(data_storage.shape[0]):
+        data = data_storage[index]
+        min_ = data.min()
+        max_ = data.max()
+        data_storage[index] = (data - min_) / (max_ - min_)
+    return data_storage, None, None
+
+
+def normalize_data_storage_each_just_stretch(data_storage):
+    for index in range(data_storage.shape[0]):
+        data = data_storage[index]
+        # stretch histogram
+        data_max = data.max()
+        data_quan99 = np.quantile(data, 0.999)
+        ratio = data_max / data_quan99
+        data = np.clip(data, data.min(), data_quan99)
+        data = (data * ratio).round()
+        data_storage[index] = data
+    return data_storage, None, None
+
+
+def normalize_data_storage_each_stretch_and_norm(data_storage):
+    for index in range(data_storage.shape[0]):
+        data = data_storage[index]
+        # stretch histogram
+        data_max = data.max()
+        data_quan99 = np.quantile(data, 0.999)
+        ratio = data_max / data_quan99
+        data = np.clip(data, data.min(), data_quan99)
+        data = (data * ratio).round()
+        mean = data.mean(axis=(-1, -2, -3))
+        std = data.std(axis=(-1, -2, -3))
+        data_storage[index] = normalize_data(data, mean, std)
+    return data_storage, None, None
+
+
+def normalize_data_storage_each_clip_and_norm(data_storage):
+    for index in range(data_storage.shape[0]):
+        data = data_storage[index]
+        # clip histogram
+        data_quan99 = np.quantile(data, 0.999)
+        data = np.clip(data, data.min(), data_quan99)
+        mean = data.mean(axis=(-1, -2, -3))
+        std = data.std(axis=(-1, -2, -3))
+        data_storage[index] = normalize_data(data, mean, std)
+    return data_storage, None, None
+
+
+def normalize_data_storage_each_just_clip(data_storage):
+    for index in range(data_storage.shape[0]):
+        data = data_storage[index]
+        # clip histogram
+        data_quan99 = np.quantile(data, 0.999)
+        data = np.clip(data, data.min(), data_quan99)
+        data_storage[index] = data
     return data_storage, None, None
