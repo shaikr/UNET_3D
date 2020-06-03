@@ -10,7 +10,7 @@ from scipy import ndimage
 
 from brats.utils import get_last_model_path
 from fetal_net.utils.threaded_generator import ThreadedGenerator
-from fetal_net.utils.utils import get_image, resize
+from fetal_net.utils.utils import get_image, resize, scale_data
 from .training import load_old_model
 from .utils import pickle_load
 from .utils.patches import reconstruct_from_patches, get_patch_from_3d_data, compute_patch_indices, \
@@ -332,7 +332,7 @@ def multi_class_prediction(prediction, affine):
 
 def run_validation_case(data_index, output_dir, model, data_file, training_modalities, patch_shape,
                         overlap_factor=0, permute=False, prev_truth_index=None, prev_truth_size=None,
-                        pred_index=None, pred_size=None, use_augmentations=False):
+                        pred_index=None, pred_size=None, use_augmentations=False, scale_xy=None, resolution_file=''):
     """
     Runs a test case and writes predicted images to file.
     :param data_index: Index from of the list of test cases to get an image prediction from.
@@ -344,8 +344,12 @@ def run_validation_case(data_index, output_dir, model, data_file, training_modal
     :param labels:
     :param training_modalities:
     :param data_file:
+    :param scale_xy: wether to attempt and scale the image to main resolution
+    :param resolution_file: a file containing a dict of all existing scans' resolutions
     :param model:
     """
+    cur_subject_id = data_file.root.subject_ids[data_index].decode()
+    
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -353,22 +357,28 @@ def run_validation_case(data_index, output_dir, model, data_file, training_modal
     #     return os.path.join(output_dir, "prediction.nii.gz")
 
     test_data = np.asarray([data_file.root.data[data_index]])
+    test_data = scale_data(test_data, cur_subject_id, dict_pkl=resolution_file, scale_xy=scale_xy)
     if prev_truth_index is not None:
         test_truth_data = np.asarray([data_file.root.truth[data_index]])
+        test_truth_data = scale_data(test_truth_data, cur_subject_id, dict_pkl=resolution_file, scale_xy=scale_xy)
     else:
         test_truth_data = None
 
     if pred_index is not None:
         test_pred_data = np.asarray([data_file.root.pred[data_index]])
+        test_pred_data = scale_data(test_pred_data, cur_subject_id, dict_pkl=resolution_file, scale_xy=scale_xy)
     else:
         test_pred_data = None
 
     # for i, modality in enumerate(training_modalities):
     #     image = get_image(test_data[i])
     #     image.to_filename(os.path.join(output_dir, "data_{0}.nii.gz".format(modality)))
-
-    test_truth = get_image(data_file.root.truth[data_index])
-    test_truth.to_filename(os.path.join(output_dir, "truth.nii.gz"))
+    try:
+        test_truth = np.asarray([data_file.root.truth[data_index]])
+        test_truth = get_image(scale_data(test_truth, cur_subject_id, dict_pkl=resolution_file, scale_xy=scale_xy))
+        test_truth.to_filename(os.path.join(output_dir, "truth.nii.gz"))
+    except:
+        pass
 
     if patch_shape == test_data.shape[-3:]:
         print("Warning - went in where it wasn't expected!!!!!")
@@ -414,7 +424,7 @@ def run_validation_case(data_index, output_dir, model, data_file, training_modal
 def run_validation_cases(validation_keys_file, model_file, training_modalities, hdf5_file, patch_shape,
                          output_dir=".", overlap_factor=0, permute=False,
                          prev_truth_index=None, prev_truth_size=None, pred_index=None, pred_size=None,
-                         use_augmentations=False):
+                         use_augmentations=False, scale_xy=None, resolution_file=''):
     file_names = []
     validation_indices = pickle_load(validation_keys_file)
     # validation_indices = [23, 24, 7]  # 2
@@ -432,7 +442,7 @@ def run_validation_cases(validation_keys_file, model_file, training_modalities, 
                                 training_modalities=training_modalities, overlap_factor=overlap_factor,
                                 permute=permute, patch_shape=patch_shape, prev_truth_index=prev_truth_index,
                                 prev_truth_size=prev_truth_size, pred_index=pred_index, pred_size=pred_size,
-                                use_augmentations=use_augmentations))
+                                use_augmentations=use_augmentations, scale_xy=scale_xy, resolution_file=resolution_file))
     data_file.close()
     return file_names
 
