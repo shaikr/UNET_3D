@@ -353,8 +353,8 @@ def run_validation_case(data_index, output_dir, model, data_file, training_modal
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    # if os.path.exists(os.path.join(output_dir, "prediction.nii.gz")):
-    #     return os.path.join(output_dir, "prediction.nii.gz")
+    if os.path.exists(os.path.join(output_dir, "prediction.nii.gz")):
+        return os.path.join(output_dir, "prediction.nii.gz")
 
     test_data = np.asarray([data_file.root.data[data_index]])
     test_data = scale_data(test_data, cur_subject_id, dict_pkl=resolution_file, scale_xy=scale_xy)
