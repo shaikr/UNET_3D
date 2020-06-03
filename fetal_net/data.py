@@ -25,9 +25,10 @@ def create_data_file(out_file, add_pred, n_samples):
 
 
 def write_image_data_to_file(image_files, data_storage, truth_storage, pred_storage, add_pred, truth_dtype=np.uint8):
+    # TODO add scaling option as well
     for set_of_files in image_files:
         images = [read_img(_) for _ in set_of_files]
-        subject_data = [image.get_data() for image in images]
+        subject_data = [transpose_if_needed(image.get_data()) for image in images]
         add_data_to_storage(data_storage, truth_storage, pred_storage, add_pred, subject_data, truth_dtype)
     return data_storage, truth_storage
 
