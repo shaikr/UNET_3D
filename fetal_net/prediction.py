@@ -301,6 +301,7 @@ def predict_from_data_file_and_write_image(model, open_data_file, index, out_fil
     image.to_filename(out_file)
 
 
+# obsolete
 def prediction_to_image(prediction, label_map=False, threshold=0.5, labels=None):
     if prediction.shape[0] == 1:
         data = prediction[0]
@@ -330,6 +331,82 @@ def multi_class_prediction(prediction, affine):
     return prediction_images
 
 
+def run_validation_case_from_image_simple(output_dir, model, processed_image, patch_shape, image_gt=None,
+                                          image_pred=None, overlap_factor=0.8, prev_truth_index=None,
+                                          prev_truth_size=None, pred_index=None, pred_size=None):
+    """
+
+    :param output_dir: folder to save prediction results in
+    :param model: loaded trained model
+    :param processed_image: as a numpy ndarray, after any processing (scaling, normalization, augmentation) wanted
+    :param patch_shape: size of patch on which to run model
+    :param image_gt: optional, {0,1} ndarray of ground truth segmentation
+    :param image_pred: optional, {0-1} ndarray of predicted segmentation
+    :param overlap_factor: amount of overlap between consecutive patches, float 0-1
+    :param prev_truth_index: if truth used in prediction - the starting index in input batch (depth), else None
+    :param prev_truth_size:if truth used in prediction - amount of truth slices in input batch, else None
+    :param pred_index: if other pred used in prediction - the starting index in input batch (depth), else None
+    :param pred_size: if other pred used in prediction - amount of pred slices in input batch (depth), else None
+    :return: prediction + path to saved location
+    """
+
+    prediction, _ = \
+        patch_wise_prediction(model=model, data=processed_image, overlap_factor=overlap_factor,
+                              patch_shape=patch_shape, truth_data=image_gt, prev_truth_index=prev_truth_index,
+                              prev_truth_size=prev_truth_size, pred_data=image_pred, pred_index=pred_index,
+                              pred_size=pred_size)  # [np.newaxis]
+    prediction = prediction.squeeze()
+    prediction_image = get_image(prediction)
+
+    filename = os.path.join(output_dir, "prediction.nii.gz")
+    name_counter = 0
+    while os.path.exists(filename):
+        name_counter += 1
+        filename = os.path.join(output_dir, "prediction_{0}.nii.gz".format(name_counter))
+    print("Saving to {}".format(filename))
+    prediction_image.to_filename(filename)
+    return prediction, filename
+
+
+def run_validation_cases_from_image_simple(list_of_processed_images, model_file, list_of_output_folders,
+                                           patch_shape, list_of_images_gt=None, list_of_images_preds=None,
+                                           overlap_factor=0.8, prev_truth_index=None,
+                                           prev_truth_size=None, pred_index=None, pred_size=None):
+    """
+
+    :param list_of_processed_images:
+    :param model_file:
+    :param list_of_output_folders:
+    :param patch_shape:
+    :param overlap_factor:
+    :param prev_truth_index:
+    :param prev_truth_size:
+    :param pred_index:
+    :param pred_size:
+    :return:
+    """
+    model = load_old_model(get_last_model_path(model_file))
+    image_gt = None
+    image_pred = None
+    file_names = []
+    predictions = []
+    for i, processed_image in list_of_processed_images:
+        if list_of_images_gt:
+            image_gt = list_of_images_gt[i]
+        if list_of_images_preds:
+            image_pred = list_of_images_preds[i]
+        cur_pred, pred_path = run_validation_case_from_image_simple(list_of_output_folders[i], model, processed_image,
+                                                                    patch_shape, image_gt=image_gt,
+                                                                    image_pred=image_pred,
+                                                                    overlap_factor=overlap_factor,
+                                                                    prev_truth_index=prev_truth_index,
+                                                                    prev_truth_size=prev_truth_size,
+                                                                    pred_index=pred_index, pred_size=pred_size)
+        file_names.append(pred_path)
+        predictions.append(cur_pred)
+    return predictions, file_names
+
+
 def run_validation_case(data_index, output_dir, model, data_file, training_modalities, patch_shape,
                         overlap_factor=0, permute=False, prev_truth_index=None, prev_truth_size=None,
                         pred_index=None, pred_size=None, use_augmentations=False, scale_xy=None, resolution_file=''):
@@ -352,9 +429,6 @@ def run_validation_case(data_index, output_dir, model, data_file, training_modal
     
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-
-    if os.path.exists(os.path.join(output_dir, "prediction.nii.gz")):
-        return os.path.join(output_dir, "prediction.nii.gz")
 
     test_data = np.asarray([data_file.root.data[data_index]])
     test_data = scale_data(test_data, cur_subject_id, dict_pkl=resolution_file, scale_xy=scale_xy)
