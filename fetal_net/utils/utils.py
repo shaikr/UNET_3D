@@ -10,6 +10,59 @@ from .nilearn_custom_utils.nilearn_utils import crop_img_to
 from .sitk_utils import resample_to_spacing, calculate_origin_offset
 
 from scipy.ndimage import map_coordinates
+from scipy import ndimage 
+
+import re
+
+
+def transpose_if_needed(image_as_np):
+    x,y,z = image_as_np.shape
+    if x != y:
+        if (x == z):
+            image_as_np = image_as_np.transpose([2,0,1])
+        elif (y == z):
+            image_as_np = image_as_np.transpose([1,2,0])
+        else:
+            print("Problem")
+        print('before_reshape: (x=%f, y=%f, z=%f)' % (x,y,z))
+    return image_as_np
+
+
+def scale_data(data, subject_id, dict_pkl, scale_xy=None):
+    
+    # TODO: handle case subject_id not existent / not in dict
+    print("Data shape: {}".format(data.shape))
+    if scale_xy:
+        pat = "(.+)\*(.+)\*"
+        res_dict = pickle.load(open(dict_pkl, 'rb'))
+        res = res_dict[subject_id]
+        match_obj_cur = re.match(pat, res)
+        cur_x = float(res[match_obj_cur.span(1)[0]:match_obj_cur.span(1)[1]])
+        cur_y = float(res[match_obj_cur.span(2)[0]:match_obj_cur.span(2)[1]])
+        print("Current resolution: {}, {}".format(cur_x, cur_y))
+        # TODO: export string literal to variable
+        tgt_res = res_dict['main']
+        match_obj_tgt = re.match(pat, tgt_res)
+        tgt_x = float(tgt_res[match_obj_tgt.span(1)[0]:match_obj_tgt.span(1)[1]])
+        tgt_y = float(tgt_res[match_obj_tgt.span(2)[0]:match_obj_tgt.span(2)[1]])
+        x_scale = cur_x / tgt_x
+        y_scale = cur_y / tgt_y
+        print("Scaling by {}, {}".format(x_scale, y_scale))
+    else:
+        x_scale = 1
+        y_scale = 1
+    # TODO: handle z-axis scale better, and the deciphering of dimensions
+    if data.ndim == 3:
+        data = ndimage.zoom(data, [x_scale, y_scale, 1])
+    elif data.ndim == 4 and data.shape[0] == 1:
+        # Assumes dim 0 is 1, for batch
+        data = ndimage.zoom(data, [1, x_scale, y_scale, 1])
+    elif data.ndim == 4 and data.shape[-1] == 1:
+        # Assumes last dim is 1, for batch
+        data = ndimage.zoom(data, [x_scale, y_scale, 1, 1])
+    else:
+        print("Data shape is {}, not scaling!!!!!!".format(data.shape))
+    return data 
 
 
 def get_image(data, affine=None, nib_class=nib.Nifti1Image):
