@@ -238,7 +238,7 @@ def patch_wise_prediction(model: Model, data, patch_shape, overlap_factor=0, bat
     assert np.array_equal(predicted_count.shape[:-1], data[0].shape), 'prediction shape wrong'
 
     final_prediction = predicted_output / predicted_count
-    prediction_variance = np.zeros(data_shape)
+    prediction_variance = np.zeros(predicted_count.shape)
     # b_iter = batch_iterator(indices, batch_size, data_0, patch_shape,
     #                         truth_0, prev_truth_index, truth_patch_shape,
     #                         pred_0, pred_index, pred_patch_shape)
