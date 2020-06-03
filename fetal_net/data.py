@@ -3,8 +3,10 @@ import os
 import numpy as np
 import tables
 
-from fetal_net.utils.utils import read_img
-from .normalize import normalize_data_storage, normalize_data_storage_each
+from fetal_net.utils.utils import read_img, transpose_if_needed
+from .normalize import normalize_data_storage, normalize_data_storage_each, normalize_data_storage_each_clip_and_norm, \
+    normalize_data_storage_each_just_stretch, normalize_data_storage_each_stretch_and_norm, \
+    normalize_data_storage_each_minmax, normalize_data_storage_each_just_clip
 
 
 def create_data_file(out_file, add_pred, n_samples):
@@ -66,7 +68,12 @@ def write_data_to_file(training_data_files, out_file, truth_dtype=np.uint8,
     if isinstance(normalize, str):
         _, mean, std = {
             'all': normalize_data_storage,
-            'each': normalize_data_storage_each
+            'each': normalize_data_storage_each,
+            'each_stretch': normalize_data_storage_each_just_stretch,
+            'each_stretch_and': normalize_data_storage_each_stretch_and_norm,
+            'each_clip': normalize_data_storage_each_just_clip,
+            'each_clip_and': normalize_data_storage_each_clip_and_norm,
+            'each_minmax': normalize_data_storage_each_minmax,
         }[normalize](data_storage)
     else:
         mean, std = None, None
