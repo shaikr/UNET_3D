@@ -34,12 +34,32 @@ def write_image_data_to_file(image_files, data_storage, truth_storage, pred_stor
 
 
 def add_data_to_storage(data_storage, truth_storage, pred_storage, add_pred, subject_data, truth_dtype):
-    data_storage.append(np.asarray(subject_data[0]).astype(np.float))
-    if add_pred is not None:
-        pred_storage.append(np.asarray(subject_data[1]).astype(np.float))
-        truth_storage.append(np.asarray(subject_data[2], dtype=truth_dtype))
+    # Can range from 1-3
+    # TODO - add parameter to control which modalities are given here?
+    # TODO - currently infers 2 modalities according to add_pred
+    n_modalities = len(subject_data)
+    
+    data_ind = 0    
+    if n_modalities == 2 and add_pred:
+        pred_ind = 1
+        truth_ind = -1
+    elif n_modalities == 2 and not add_pred:
+        pred_ind = -1
+        truth_ind = 1 
+    elif n_modalities == 3 and add_pred:
+        pred_ind = 1
+        truth_ind = 2
+    elif n_modalities == 1:
+        pred_ind = -1
+        truth_ind = -1
     else:
-        truth_storage.append(np.asarray(subject_data[1], dtype=truth_dtype))
+        raise ValueError("Amount of modalities is {}, add_pred is {}. What should happen?".format(n_modalities, add_pred))
+    
+    data_storage.append(np.asarray(subject_data[data_ind]).astype(np.float))
+    if pred_ind > 0:
+        pred_storage.append(np.asarray(subject_data[pred_ind]).astype(np.float))
+    if truth_ind > 0:
+        truth_storage.append(np.asarray(subject_data[truth_ind], dtype=truth_dtype))
 
 
 def write_data_to_file(training_data_files, out_file, truth_dtype=np.uint8,
