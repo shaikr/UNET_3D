@@ -351,7 +351,7 @@ def run_validation_case_from_image_simple(output_dir, model, processed_image, pa
     """
 
     prediction, _ = \
-        patch_wise_prediction(model=model, data=processed_image, overlap_factor=overlap_factor,
+        patch_wise_prediction(model=model, data=np.expand_dims(processed_image.squeeze(), 0), overlap_factor=overlap_factor,
                               patch_shape=patch_shape, truth_data=image_gt, prev_truth_index=prev_truth_index,
                               prev_truth_size=prev_truth_size, pred_data=image_pred, pred_index=pred_index,
                               pred_size=pred_size)  # [np.newaxis]
@@ -385,12 +385,12 @@ def run_validation_cases_from_image_simple(list_of_processed_images, model_file,
     :param pred_size:
     :return:
     """
-    model = load_old_model(get_last_model_path(model_file))
+    model = load_old_model(model_file)
     image_gt = None
     image_pred = None
     file_names = []
     predictions = []
-    for i, processed_image in list_of_processed_images:
+    for i, processed_image in enumerate(list_of_processed_images):
         if list_of_images_gt:
             image_gt = list_of_images_gt[i]
         if list_of_images_preds:
