@@ -188,12 +188,16 @@ def get_validation_split(data_file, training_file, validation_file, test_file, d
         nb_samples = len(data_file.root.data)
         sample_list = list(range(nb_samples))
         random.shuffle(sample_list)
-        test_list = [23, 5, 6] # [sample_list.pop() for i in range(3)]
+        # test_list = [31, 9, 10, 2] 
+        # test_list = [1, 7, 8, 29]# [sample_list.pop() for i in range(3)] ids: 40, 135, 188, 189
+        # test_list = [sample_list.pop() for i in range(3)]
+        test_list = [13, 14, 19]
         print(test_list)
         # test_list = [0, 10, 20]
 
         sample_list = list(set(sample_list) - set(test_list))
-        training_list, validation_list = split_list(sample_list, split=0.85)
+        training_list, validation_list = split_list(sample_list, split=0.87)
+        print(validation_list)
         # validation_list = [6, 12, 16]
         # training_list = [1, 3, 5, 9, 13, 14, 15, 17, 18, 21, 22, 23, 24, 25, 26, 19, 11, 8, 7, 4, 2]
         random.shuffle(training_list)
