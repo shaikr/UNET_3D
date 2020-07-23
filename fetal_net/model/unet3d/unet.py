@@ -1,7 +1,7 @@
 import numpy as np
 from keras import backend as K
 from keras.engine import Input, Model
-from keras.layers import Conv3D, MaxPooling3D, UpSampling3D, Activation, BatchNormalization, PReLU, Deconvolution3D
+from keras.layers import Conv3D, MaxPooling3D, UpSampling3D, Activation, BatchNormalization, PReLU, Deconvolution3D, Lambda
 from keras.optimizers import Adam
 
 from ...metrics import dice_coefficient_loss, get_label_dice_coefficient_function, dice_coefficient, vod_coefficient
@@ -17,7 +17,7 @@ except ImportError:
 def unet_model_3d(input_shape, pool_size=(2, 2, 2), n_labels=1, initial_learning_rate=0.00001, deconvolution=False,
                   depth=4, n_base_filters=32, include_label_wise_dice_coefficients=False,
                   batch_normalization=False, activation_name="sigmoid", loss_function=dice_coefficient_loss,
-                  **kargs):
+                  truth_index=0, truth_size=None, **kargs):
     """
     Builds the 3D UNet Keras model.f
     :param metrics: List metrics to be calculated during model training (default is dice coefficient).
@@ -67,7 +67,13 @@ def unet_model_3d(input_shape, pool_size=(2, 2, 2), n_labels=1, initial_learning
 
     final_convolution = Conv3D(n_labels, (1, 1, 1))(current_layer)
     act = Activation(activation_name)(final_convolution)
-    model = Model(inputs=inputs, outputs=act)
+    if truth_size and truth_size < act.shape[-1]:
+        # Add slicing layer
+        print("!!!!!!!!!!!!!!!!")
+        sliced = Crop(-1, truth_index, truth_size)(act)
+        model = Model(inputs=inputs, outputs=sliced)
+    else:
+        model = Model(inputs=inputs, outputs=act)
 
     # if not isinstance(metrics, list):
     #     metrics = [metrics]
@@ -136,3 +142,25 @@ def get_up_convolution(n_filters, pool_size, kernel_size=(2, 2, 2), strides=(2, 
                                strides=strides)
     else:
         return UpSampling3D(size=pool_size)
+        
+
+def Crop(dim, start, size, **kwargs):
+    # Crops (or slices) a Tensor on a given dimension from start to end
+    # example : to crop tensor x[:, :, 5:10]
+
+    def func(x):
+        dimension = dim
+        if dimension == -1:
+            dimension = len(x.shape) - 1
+        if dimension == 0:
+            return x[start:start+size]
+        if dimension == 1:
+            return x[:, start:start+size]
+        if dimension == 2:
+            return x[:, :, start:start+size]
+        if dimension == 3:
+            return x[:, :, :, start:start+size]
+        if dimension == 4:
+            return x[:, :, :, :, start:start+size]
+
+    return Lambda(func, **kwargs)
