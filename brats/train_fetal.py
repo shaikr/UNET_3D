@@ -14,6 +14,8 @@ from pathlib import Path
 import json
 import argparse
 
+
+# will have: 96x96x5, 64x64x5, 128x128x5, 96x96x3, 96x96x7
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--overwrite_config", help="overwrite saved config",
@@ -23,7 +25,7 @@ parser.add_argument("--config_dir", help="specifies config dir path",
 parser.add_argument("--split_dir", help="Name of split folder",
                     type=str, required=False, default='../debug_split')
 parser.add_argument("--experiment_name", help="Name of experiment folder",
-                    type=str, required=False, default="experiment_all_samples") #datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")) # '2019_02_11_20_40') #datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")) #default=datetime.datetime.now().strftime("%Y_%m_%d_%H_%M"))
+                    type=str, required=False, default="20200616_try_3d_unet_base_02") #datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")) # '2019_02_11_20_40') #datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")) #default=datetime.datetime.now().strftime("%Y_%m_%d_%H_%M"))
 parser.add_argument("--imitate_experiment", help="Name of experiment folder to imitate",
                     type=str, required=False, default="") # '2019_02_11_20_40') #datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")) #default=datetime.datetime.now().strftime("%Y_%m_%d_%H_%M"))
 
@@ -42,7 +44,7 @@ elif Path(os.path.join(opts.to_imitate_dir, 'config.json')).exists():
     print('Imitating previous config.json from {}'.format(opts.to_imitate_dir))
     with open(os.path.join(opts.to_imitate_dir, 'config.json')) as f:
         config = json.load(f)
-    # config["skip_blank_val"] = True  # if True, then patches without any target will be skipped
+    config["skip_blank_val"] = True  # if True, then patches without any target will be skipped
     # if 'gamma' in config:
     #     print(config['gamma'])
     #     print(config['alpha'])
@@ -59,7 +61,7 @@ else:
     config = dict()
     config["base_dir"] = opts.config_dir
     config["split_dir"] = '../debug_split'
-    config['scans_dir'] = '../../../placenta_data'
+    config['scans_dir'] = '../../placenta_data' # dafi_april_2020' # 
 
     Path(config["base_dir"]).mkdir(parents=True, exist_ok=True)
     Path(config["split_dir"]).mkdir(parents=True, exist_ok=True)
@@ -74,19 +76,19 @@ else:
     config["early_stop"] = 25  # training will be stopped after this many epochs without the validation loss improving
     config["initial_learning_rate"] = 5e-4
     config["learning_rate_drop"] = 0.75  # factor by which the learning rate will be reduced
-    config["validation_split"] = 0.90  # portion of the data that will be used for training %
+    config["validation_split"] = 0.85  # portion of the data that will be used for training %
 
-    config["3D"] = False  # Enable for 3D Models
+    config["3D"] = True # False  # Enable for 3D Models
     if config["3D"]:
         # Model params (3D)
         config["patch_shape"] = (96, 96)  # switch to None to train on the whole image
-        config["patch_depth"] = 64
-        config["truth_index"] = 0
-        config["truth_size"] = 64
-        model_name = 'isensee'  # or 'unet'
+        config["patch_depth"] = 16 # 64
+        config["truth_index"] = 7 # 0
+        config["truth_size"] = 1 # 64
+        model_name = 'unet'  # or 'isensee'
     else:
         #Model params (2D) - should increase "batch_size" and "patches_per_epoch"
-        config["patch_shape"] = (96, 96)  # switch to None to train on the whole image
+        config["patch_shape"] = (64, 64)  # switch to None to train on the whole image
         config["patch_depth"] = 5
         config["truth_index"] = 2
         config["truth_size"] = 1
@@ -121,34 +123,34 @@ else:
         # "iso_scale": {
         #     "max": 1
         # },
-        "rotate": (0, 0, 90),  # std of angle rotation, switch to None if you want no rotation
-        "poisson_noise": 1,
-        "gaussian_filter": {
-            "prob": 0.5,
-            "max_sigma": 0.05
-        },
-        "contrast": {
-            'prob': 0,
-            'min_factor': 0.2,
-            'max_factor': 0.1
-        },
+        # "rotate": (0, 0, 90),  # std of angle rotation, switch to None if you want no rotation
+        "poisson_noise": 1
+        # "gaussian_filter": {
+        #     "prob": 0.5,
+        #     "max_sigma": 0.05
+        # },
+        # "contrast": {
+        #     'prob': 0,
+        #     'min_factor': 0.2,
+        #     'max_factor': 0.1
+        # },
         # "piecewise_affine": {
         #     'scale': 2
         # },
-        "elastic_transform": {
-            'alpha': 5,
-            'sigma': 10
-        },
+        # "elastic_transform": {
+        #     'alpha': 5,
+        #     'sigma': 10
+        # },
         # "intensity_multiplication": 0.2,
-        "coarse_dropout": {
-            "rate": 0.2,
-            "size_percent": [0.10, 0.30],
-            "per_channel": True
-        },
-        "speckle_noise": {
-            "prob": 0.5,
-            "sigma": 0.05
-        }
+        # "coarse_dropout": {
+        #     "rate": 0.2,
+        #     "size_percent": [0.10, 0.30],
+        #     "per_channel": True
+        # },
+        # "speckle_noise": {
+        #     "prob": 0.5,
+        #     "sigma": 0.05
+        # }
     }
 
     # If the model outputs smaller result (x,y)-wise than the input
@@ -173,7 +175,7 @@ else:
         0: False,
         1: 'all',
         2: 'each'
-    }[1]  # Normalize by all or each data mean and std
+    }[2]  # Normalize by all or each data mean and std
 
     # add ".gz" extension if needed
     config["ext"] = ""  # ".gz"
@@ -184,11 +186,11 @@ else:
     # Auto set - do not touch
     config["augment"] = config["augment"] if any(config["augment"].values()) else None
     config["n_labels"] = len(config["labels"])
-    config["all_modalities"] = ["volume", "prediction"]
+    config["all_modalities"] = ["volume"] #, "prediction"] #, "prediction_nov_with_pred_5"]
 
     # IMPORTANT - the prediction dtype ?
-    config["pred_index"] = 0 #config["truth_index"]  # None for regular training
-    config["pred_size"] = 5 # 1  # None for regular training, can be more if want to get all predictions
+    config["pred_index"] = None # 1 #config["truth_index"]  # None for regular training
+    config["pred_size"] = None # 3 # 1  # None for regular training, can be more if want to get all predictions
 
     config["training_modalities"] = config["all_modalities"]  # change this if you want to only use some of the modalities
     # config["nb_channels"] = len(config["training_modalities"])
@@ -203,6 +205,7 @@ else:
     config["training_file"] = os.path.join(config["split_dir"], "training_ids.pkl")
     config["validation_file"] = os.path.join(config["split_dir"], "validation_ids.pkl")
     config["test_file"] = os.path.join(config["split_dir"], "test_ids.pkl")
+    config["resolution_dict_file"] = os.path.join(config["split_dir"], "resolution_dict.pkl")
     config["overwrite"] = False  # If True, will override previous files. If False, will use previously written files.
 
     if config['3D']:
@@ -218,13 +221,17 @@ else:
 def fetch_training_data_files(return_subject_ids=False):
     training_data_files = list()
     subject_ids = list()
+    print(config["scans_dir"])
     # for subject_dir in glob.glob(os.path.join(os.path.dirname(__file__), "data", "preprocessed", "*", "*")):
     for subject_dir in sorted(glob.glob(os.path.join(config["scans_dir"], "*")),
                               key=os.path.basename):
+        print(subject_dir)
         subject_ids.append(os.path.basename(subject_dir))
         subject_files = list()
         for modality in config["training_modalities"] + ["truth"]:
-            subject_files.append(os.path.join(subject_dir, modality + ".nii" + config["ext"]))
+            cur_file_path = os.path.join(subject_dir, modality + ".nii" + config["ext"])
+            if os.path.exists(cur_file_path):
+                subject_files.append(cur_file_path)
         training_data_files.append(tuple(subject_files))
     if return_subject_ids:
         return training_data_files, subject_ids
@@ -235,6 +242,7 @@ def fetch_training_data_files(return_subject_ids=False):
 def main_train(config, overwrite=False):
     # convert input images into an hdf5 file
     if overwrite or not os.path.exists(config["data_file"]):
+        print("Writing h5 file")
         training_files, subject_ids = fetch_training_data_files(return_subject_ids=True)
 
         _, (mean, std) = write_data_to_file(training_files, config["data_file"], subject_ids=subject_ids,
@@ -256,7 +264,9 @@ def main_train(config, overwrite=False):
                            initial_learning_rate=config["initial_learning_rate"],
                            **{'dropout_rate': config['dropout_rate'],
                               'loss_function': loss_func,
-                              'old_model_path': config['old_model']})
+                              'old_model_path': config['old_model'],
+                              'truth_index': config['truth_index'],
+                              'truth_size': config['truth_size']})
     model.summary()
 
     # get training and testing generators
