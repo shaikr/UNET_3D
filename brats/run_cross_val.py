@@ -6,6 +6,7 @@ import pickle
 import tables
 import os
 
+
 def pickle_dump(item, out_file):
     with open(out_file, "wb") as opened_file:
         pickle.dump(item, opened_file)
@@ -84,3 +85,16 @@ existing_data_fpath = r"/datadrive/configs/20200404_single_resolution_iter3/feta
 exp_names_prefix = r"single_resolution_64_64_5_cross_val_train"
 run_cross_val_training(existing_data_file_path=existing_data_fpath, exp_names_prefix=exp_names_prefix, conf_to_imitate=conf_to_imitate)
 
+import glob
+import nibabel as nib
+data_pref = r"/data/home/Shai/placenta_data"
+exps = glob.glob('/datadrive/configs/64_64_5_cross_val_*')
+
+for e in exps:
+    cur_p = os.path.join(e, 'predictions', 'test')
+    subs = os.listdir(cur_p)
+    for s_id in subs:
+        print("Adding prediction to subject {}".format(s_id))
+        if not os.path.exists(os.path.join(data_pref, s_id, 'prediction.nii')):
+            a_tmp = nib.load(os.path.join(cur_p, s_id, 'prediction.nii.gz'))
+            nib.save(a_tmp, os.path.join(data_pref, s_id, 'prediction.nii'))

@@ -12,7 +12,7 @@ import argparse
 from fetal_net.utils.cut_relevant_areas import find_bounding_box, cut_bounding_box
 
 
-def main(config, split='test', overlap_factor=1, config2=None, use_augmentations=False):
+def main(config, split='test', overlap_factor=1, config2=None, use_augmentations=False, scale_xy=None):
     prediction_dir = os.path.abspath(os.path.join(config['base_dir'], 'predictions', split))
 
     indices_file = {
@@ -31,7 +31,9 @@ def main(config, split='test', overlap_factor=1, config2=None, use_augmentations
                          prev_truth_size=config["prev_truth_size"],
                          pred_index=config["pred_index"],
                          pred_size=config["pred_size"],
-                         use_augmentations=use_augmentations)
+                         use_augmentations=use_augmentations,
+                         scale_xy=scale_xy,
+                         resolution_file=config["resolution_dict_file"])
 
 
 if __name__ == "__main__":
@@ -45,9 +47,11 @@ if __name__ == "__main__":
                         type=float, default=0.9) # 0.9
     parser.add_argument("--use_augmentations", help="specifies whether to predict on augmentations",
                         type=bool, default=False) # False
+    parser.add_argument("--scale_xy", help="specifies whether to rescale xy to 1.56x1.56",
+                        action="store_true") 
     opts = parser.parse_args()
 
     with open(os.path.join(opts.config_dir, 'config.json')) as f:
         config = json.load(f)
 
-    main(config, opts.split, opts.overlap_factor, use_augmentations=opts.use_augmentations)
+    main(config, opts.split, opts.overlap_factor, use_augmentations=opts.use_augmentations, scale_xy=opts.scale_xy)

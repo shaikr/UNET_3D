@@ -142,7 +142,7 @@ def get_up_convolution(n_filters, pool_size, kernel_size=(2, 2, 2), strides=(2, 
                                strides=strides)
     else:
         return UpSampling3D(size=pool_size)
-        
+
 
 def Crop(dim, start, size, **kwargs):
     # Crops (or slices) a Tensor on a given dimension from start to end
