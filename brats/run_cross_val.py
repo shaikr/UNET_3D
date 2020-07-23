@@ -38,7 +38,7 @@ def run_cross_val_training(existing_data_file_path, exp_names_prefix, conf_to_im
     all_experiement_names = []
 
     n_test = 3
-    n_iters = int(np.ceil(len(all_list_temp) / n_test))
+    n_iters = int(np.ceil(float(len(all_list_temp)) / n_test))
     for i in range(n_iters):
         print("In round {} out of {}".format(i+1, n_iters))
 
@@ -78,7 +78,9 @@ def run_cross_val_training(existing_data_file_path, exp_names_prefix, conf_to_im
 
 
 conf_to_imitate = r"new_arch_exp_64_64_5"
+conf_to_imitate = r"20200404_single_resolution_iter3"
 existing_data_fpath = r"/datadrive/configs/dump_folder/new_arch_exp_64_64_5/fetal_data.h5"
-exp_names_prefix = r"64_64_5_cross_val_train"
+existing_data_fpath = r"/datadrive/configs/20200404_single_resolution_iter3/fetal_data_orig.h5"
+exp_names_prefix = r"single_resolution_64_64_5_cross_val_train"
 run_cross_val_training(existing_data_file_path=existing_data_fpath, exp_names_prefix=exp_names_prefix, conf_to_imitate=conf_to_imitate)
 
