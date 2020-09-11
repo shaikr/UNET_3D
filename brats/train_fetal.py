@@ -78,7 +78,7 @@ else:
     config["learning_rate_drop"] = 0.75  # factor by which the learning rate will be reduced
     config["validation_split"] = 0.85  # portion of the data that will be used for training %
 
-    config["3D"] = True # False  # Enable for 3D Models
+    config["3D"] = False  # True# Enable for 3D Models
     if config["3D"]:
         # Model params (3D)
         config["patch_shape"] = (96, 96)  # switch to None to train on the whole image
