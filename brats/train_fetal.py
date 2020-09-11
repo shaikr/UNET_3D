@@ -60,7 +60,7 @@ else:
 
     config = dict()
     config["base_dir"] = opts.config_dir
-    config["split_dir"] = '../debug_split'
+    config["split_dir"] = os.path.join(config["base_dir"], "debug_split")
     config['scans_dir'] = '../../placenta_data' # dafi_april_2020' #
 
     Path(config["base_dir"]).mkdir(parents=True, exist_ok=True)
