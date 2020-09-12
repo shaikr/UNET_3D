@@ -2,6 +2,28 @@ from functools import partial
 from keras.losses import binary_crossentropy
 from keras import backend as K
 import tensorflow as tf
+import numpy as np
+import SimpleITK as sitk
+from enum import Enum
+
+
+class SurfaceDistanceMeasures(Enum):
+    hausdorff_distance, mean_surface_distance, median_surface_distance, std_surface_distance, max_surface_distance = \
+        range(5)
+
+
+def false_positive_rate(y_true, y_pred, smooth=1.):
+    y_true_f = K.flatten(1 - y_true)
+    y_pred_f = K.flatten(y_pred)
+    false_positives = K.sum(y_true_f * y_pred_f)
+    return false_positives / (K.sum(y_pred_f) + smooth)
+
+
+def false_negative_rate(y_true, y_pred, smooth=1.):
+    y_true_f = K.flatten(y_true)
+    y_pred_f = K.flatten(1 - y_pred)
+    false_negatives = K.sum(y_true_f * y_pred_f)
+    return false_negatives / (K.sum(y_pred_f) + smooth)
 
 
 def dice_coefficient(y_true, y_pred, smooth=1.):
@@ -17,6 +39,37 @@ def vod_coefficient(y_true, y_pred, smooth=1.):
     intersection = K.sum(y_true_f * y_pred_f)
     union = K.sum(y_true_f) + K.sum(y_pred_f) - intersection
     return (intersection + smooth) / (union + smooth)
+
+
+def get_surface_distances(truth, pred_binary):
+    hausdorff_distance_filter = sitk.HausdorffDistanceImageFilter()
+    statistics_image_filter = sitk.StatisticsImageFilter()
+    pred_bin_0 = sitk.GetImageFromArray(pred_binary)
+    truth = sitk.GetImageFromArray(truth)
+    reference_distance_map = sitk.Abs(sitk.SignedMaurerDistanceMap(truth, squaredDistance=False))
+    reference_surface = sitk.LabelContour(truth)
+    segmented_distance_map = sitk.Abs(sitk.SignedMaurerDistanceMap(pred_bin_0, squaredDistance=False))
+    segmented_surface = sitk.LabelContour(pred_bin_0)
+    statistics_image_filter.Execute(reference_surface)
+    num_reference_surface_pixels = int(statistics_image_filter.GetSum())
+    statistics_image_filter.Execute(segmented_surface)
+    num_segmented_surface_pixels = int(statistics_image_filter.GetSum())
+    if num_segmented_surface_pixels == 0:
+        return 100
+
+    hausdorff_distance_filter.Execute(truth, pred_bin_0)
+
+    seg2ref_distance_map = reference_distance_map * sitk.Cast(segmented_surface, sitk.sitkFloat32)
+    ref2seg_distance_map = segmented_distance_map * sitk.Cast(reference_surface, sitk.sitkFloat32)
+
+    seg2ref_distance_map_arr = sitk.GetArrayViewFromImage(seg2ref_distance_map)
+    seg2ref_distances = list(seg2ref_distance_map_arr[seg2ref_distance_map_arr != 0])
+    seg2ref_distances = seg2ref_distances + list(np.zeros(num_segmented_surface_pixels - len(seg2ref_distances)))
+    ref2seg_distance_map_arr = sitk.GetArrayViewFromImage(ref2seg_distance_map)
+    ref2seg_distances = list(ref2seg_distance_map_arr[ref2seg_distance_map_arr != 0])
+    ref2seg_distances = ref2seg_distances + list(np.zeros(num_reference_surface_pixels - len(ref2seg_distances)))
+    all_surface_distances = seg2ref_distances + ref2seg_distances
+    return hausdorff_distance_filter.GetHausdorffDistance(), np.mean(all_surface_distances)
 
 
 def dice_coefficient_loss(y_true, y_pred):
