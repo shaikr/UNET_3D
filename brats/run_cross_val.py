@@ -72,11 +72,7 @@ def run_cross_val_training(existing_data_file_path, exp_names_prefix, conf_to_im
         if conf_to_imitate:
             set_new_config(conf_to_imitate, cur_exp_name)
         print('Now training {}'.format(cur_exp_name))
-        if conf_to_imitate is None:
-            cmd = "python3 train_fetal.py --experiment_name='{}'".format(cur_exp_name)
-        else:
-            cmd = "python3 train_fetal.py --experiment_name='{}'" \
-                  " --imitate_experiment='{}'".format(cur_exp_name, conf_to_imitate)
+        cmd = "python3 train_fetal.py --experiment_name='{}'".format(cur_exp_name)
         print(cmd)
         os.system(cmd)
 
