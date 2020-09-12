@@ -50,6 +50,10 @@ elif Path(os.path.join(opts.to_imitate_dir, 'config.json')).exists():
     #     print(config['alpha'])
     #     os.exit()
     config["base_dir"] = opts.config_dir
+    config["split_dir"] = os.path.join(config["base_dir"], "debug_split")
+    config["training_file"] = os.path.join(config["split_dir"], "training_ids.pkl")
+    config["validation_file"] = os.path.join(config["split_dir"], "validation_ids.pkl")
+    config["test_file"] = os.path.join(config["split_dir"], "test_ids.pkl")
     Path(config["base_dir"]).mkdir(parents=True, exist_ok=True)
     Path(config["split_dir"]).mkdir(parents=True, exist_ok=True)
     config["data_file"] = os.path.join(config["base_dir"], "fetal_data.h5")
