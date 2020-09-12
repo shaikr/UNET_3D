@@ -21,7 +21,7 @@ def pickle_dump(item, out_file):
 
 def create_files(cur_exp_name, training_list, validation_list, test_list):
     exp_folder = os.path.join(r"/datadrive/configs", cur_exp_name)
-    os.mkdir(os.path.join(exp_folder, "debug_split"), parents=True, exist_ok=True)
+    Path(os.path.join(exp_folder, "debug_split")).mkdir(parents=True, exist_ok=True)
     pickle_dump(training_list, os.path.join(exp_folder, "debug_split", "training_ids.pkl"))
     pickle_dump(validation_list, os.path.join(exp_folder, "debug_split", "validation_ids.pkl"))
     pickle_dump(test_list, os.path.join(exp_folder, "debug_split", "test_ids.pkl"))
@@ -50,10 +50,6 @@ def run_cross_val_training(existing_data_file_path, exp_names_prefix, conf_to_im
     print('# of subjects: {}'.format(len(all_list)))
     random.shuffle(all_list)
     all_list_temp = all_list
-    # all_list_temp.remove(5)
-    # all_list_temp.remove(6)
-    # all_list_temp.remove(23)
-
     all_experiement_names = []
 
     n_test = 3
