@@ -20,9 +20,7 @@ def pickle_dump(item, out_file):
 
 def create_files(cur_exp_name, training_list, validation_list, test_list):
     exp_folder = os.path.join(r"/datadrive/configs", cur_exp_name)
-    if not os.path.exists(exp_folder):
-        os.mkdir(exp_folder)
-    os.mkdir(os.path.join(exp_folder, "debug_split"))
+    os.mkdir(os.path.join(exp_folder, "debug_split"),parents=True, exist_ok=True)
     pickle_dump(training_list, os.path.join(exp_folder, "debug_split", "training_ids.pkl"))
     pickle_dump(validation_list, os.path.join(exp_folder, "debug_split", "validation_ids.pkl"))
     pickle_dump(test_list, os.path.join(exp_folder, "debug_split", "test_ids.pkl"))
@@ -57,24 +55,28 @@ def run_cross_val_training(existing_data_file_path, exp_names_prefix, conf_to_im
             create_files(cur_exp_name, training_list, validation_list, test_list)
         except:
             print('Problem creating files')
+        all_list_temp = all_list_temp[n_test:] + all_list_temp[:n_test]
 
-        print('Created files, now training')
+    print("Created all files")
+
+    for i in range(n_iters):
+        cur_exp_name = '{}_cross_val_train_{}'.format(exp_names_prefix, i + 1)
+        print('Now training {}'.format(cur_exp_name))
         if conf_to_imitate is None:
-            cmd = "python train_fetal.py --experiment_name='{}'".format(cur_exp_name)
+            cmd = "python3 train_fetal.py --experiment_name='{}'".format(cur_exp_name)
         else:
-            cmd = "python train_fetal.py --experiment_name='{}'" \
+            cmd = "python3 train_fetal.py --experiment_name='{}'" \
                   " --imitate_experiment='{}'".format(cur_exp_name, conf_to_imitate)
         print(cmd)
         os.system(cmd)
 
         print("Finished training, now running on test")
         conf_dir = '../../../../../datadrive/configs/' + '{}'.format(cur_exp_name)
-        cmd = "python predict.py --split='test' --config='{}'".format(conf_dir)
+        cmd = "python3 predict.py --split='test' --config='{}'".format(conf_dir)
         print(cmd)
         os.system(cmd)
 
         print('Finished forward')
-        all_list_temp = all_list_temp[n_test:] + all_list_temp[:n_test]
         all_experiement_names = all_experiement_names + ['{}'.format(cur_exp_name)]
     return all_experiement_names
 
