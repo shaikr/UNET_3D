@@ -21,14 +21,14 @@ def pickle_dump(item, out_file):
 
 def create_files(cur_exp_name, training_list, validation_list, test_list):
     exp_folder = os.path.join(r"/datadrive/configs", cur_exp_name)
-    os.mkdir(os.path.join(exp_folder, "debug_split"),parents=True, exist_ok=True)
+    os.mkdir(os.path.join(exp_folder, "debug_split"), parents=True, exist_ok=True)
     pickle_dump(training_list, os.path.join(exp_folder, "debug_split", "training_ids.pkl"))
     pickle_dump(validation_list, os.path.join(exp_folder, "debug_split", "validation_ids.pkl"))
     pickle_dump(test_list, os.path.join(exp_folder, "debug_split", "test_ids.pkl"))
 
 
 def set_new_config(conf_to_imitate, cur_exp_name):
-    with open(os.path.join(conf_to_imitate, 'config.json')) as f:
+    with open(os.path.join(r"/datadrive/configs", conf_to_imitate, 'config.json')) as f:
         config = json.load(f)
     config["overwrite"] = False
     config["base_dir"] = os.path.join(r"/datadrive/configs", cur_exp_name)
@@ -66,11 +66,7 @@ def run_cross_val_training(existing_data_file_path, exp_names_prefix, conf_to_im
         training_list = all_list_temp[2*n_test:]
 
         cur_exp_name = '{}_cross_val_train_{}'.format(exp_names_prefix, i+1)
-
-        try:
-            create_files(cur_exp_name, training_list, validation_list, test_list)
-        except:
-            print('Problem creating files')
+        create_files(cur_exp_name, training_list, validation_list, test_list)
         all_list_temp = all_list_temp[n_test:] + all_list_temp[:n_test]
 
     print("Created all files")
