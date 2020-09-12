@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import json
 import random
 import numpy as np
 import pickle
@@ -24,6 +25,21 @@ def create_files(cur_exp_name, training_list, validation_list, test_list):
     pickle_dump(training_list, os.path.join(exp_folder, "debug_split", "training_ids.pkl"))
     pickle_dump(validation_list, os.path.join(exp_folder, "debug_split", "validation_ids.pkl"))
     pickle_dump(test_list, os.path.join(exp_folder, "debug_split", "test_ids.pkl"))
+
+
+def set_new_config(conf_to_imitate, cur_exp_name):
+    with open(os.path.join(conf_to_imitate, 'config.json')) as f:
+        config = json.load(f)
+    config["overwrite"] = False
+    config["base_dir"] = os.path.join(r"/datadrive/configs", cur_exp_name)
+    config["split_dir"] = os.path.join(config["base_dir"], "debug_split")
+    config["training_file"] = os.path.join(config["split_dir"], "training_ids.pkl")
+    config["validation_file"] = os.path.join(config["split_dir"], "validation_ids.pkl")
+    config["test_file"] = os.path.join(config["split_dir"], "test_ids.pkl")
+    config["data_file"] = os.path.join(config["base_dir"], "fetal_data.h5")
+    config["model_file"] = os.path.join(config["base_dir"], "fetal_net_model")
+    with open(os.path.join(config["base_dir"], 'config.json'), mode='w') as f:
+        json.dump(config, f, indent=2)
 
 
 def run_cross_val_training(existing_data_file_path, exp_names_prefix, conf_to_imitate=None):
@@ -61,6 +77,8 @@ def run_cross_val_training(existing_data_file_path, exp_names_prefix, conf_to_im
 
     for i in range(n_iters):
         cur_exp_name = '{}_cross_val_train_{}'.format(exp_names_prefix, i + 1)
+        if conf_to_imitate:
+            set_new_config(conf_to_imitate, cur_exp_name)
         print('Now training {}'.format(cur_exp_name))
         if conf_to_imitate is None:
             cmd = "python3 train_fetal.py --experiment_name='{}'".format(cur_exp_name)
