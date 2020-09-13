@@ -13,17 +13,17 @@ class SurfaceDistanceMeasures(Enum):
 
 
 def false_positive_rate(y_true, y_pred, smooth=1.):
-    y_true_f = K.flatten(1 - y_true)
-    y_pred_f = K.flatten(y_pred)
-    false_positives = K.sum(y_true_f * y_pred_f)
-    return false_positives / (K.sum(y_pred_f) + smooth)
+    y_true_f = (1 - y_true).flatten()
+    y_pred_f = y_pred.flatten()
+    false_positives = np.sum(y_true_f * y_pred_f)
+    return false_positives / (np.sum(y_pred_f) + smooth)
 
 
 def false_negative_rate(y_true, y_pred, smooth=1.):
-    y_true_f = K.flatten(y_true)
-    y_pred_f = K.flatten(1 - y_pred)
-    false_negatives = K.sum(y_true_f * y_pred_f)
-    return false_negatives / (K.sum(y_pred_f) + smooth)
+    y_true_f = y_true.flatten()
+    y_pred_f = (1 - y_pred).flatten()
+    false_negatives = np.sum(y_true_f * y_pred_f)
+    return false_negatives / (np.sum(y_pred_f) + smooth)
 
 
 def dice_coefficient(y_true, y_pred, smooth=1.):
@@ -33,11 +33,26 @@ def dice_coefficient(y_true, y_pred, smooth=1.):
     return (2. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f) + smooth)
 
 
+def dice_coefficient_np(y_true, y_pred, smooth=1.):
+    y_true_f = y_true.flatten()
+    y_pred_f = y_pred.flatten()
+    intersection = np.sum(y_true_f * y_pred_f)
+    return (2. * intersection + smooth) / (np.sum(y_true_f) + np.sum(y_pred_f) + smooth)
+
+
 def vod_coefficient(y_true, y_pred, smooth=1.):
     y_true_f = K.flatten(y_true)
     y_pred_f = K.flatten(y_pred)
     intersection = K.sum(y_true_f * y_pred_f)
     union = K.sum(y_true_f) + K.sum(y_pred_f) - intersection
+    return (intersection + smooth) / (union + smooth)
+
+
+def vod_coefficient_np(y_true, y_pred, smooth=1.):
+    y_true_f = y_true.flatten()
+    y_pred_f = y_pred.flatten()
+    intersection = np.sum(y_true_f * y_pred_f)
+    union = np.sum(y_true_f) + np.sum(y_pred_f) - intersection
     return (intersection + smooth) / (union + smooth)
 
 
