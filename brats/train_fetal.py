@@ -4,7 +4,7 @@ import datetime
 
 import fetal_net
 import fetal_net.metrics
-from brats.utils import get_last_model_path
+from brats.utils import get_last_model_path, generate_progress_graph
 from fetal_net.data import write_data_to_file, open_data_file
 from fetal_net.generator import get_training_and_validation_generators
 from fetal_net.model.fetal_net import fetal_envelope_model
@@ -320,3 +320,4 @@ def main_train(config, overwrite=False):
 
 if __name__ == "__main__":
     main_train(config=config, overwrite=config["overwrite"])
+    generate_progress_graph(config["base_dir"])

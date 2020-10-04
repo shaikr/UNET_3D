@@ -8,6 +8,39 @@ from sklearn.preprocessing.data import _handle_zeros_in_scale
 from sklearn.utils.validation import check_is_fitted, FLOAT_DTYPES, check_array
 
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+
+def generate_progress_graph(training_dir):
+    exp = os.path.basename(training_dir)
+    training_fpath = os.path.join(training_dir, 'training')
+    if not os.path.exists(training_fpath):
+        return False
+    try:
+        df = pd.read_csv(training_fpath)
+        if any(np.isinf(df).all()):
+            print(f'found column all infs in {exp}')
+        elif not all(np.isfinite(df).all()):
+            print(f'found column some infs in {exp}')
+        fig, axs = plt.subplots(2, 1, sharex=True, figsize=(15, 10))
+        x = list(range(len(df)))
+        axs[0].plot(x, df['loss'], label='Training loss')
+        axs[0].plot(x, df['val_loss'], label='Validation loss')
+        axs[0].legend(prop={'size': 14})
+        axs[0].tick_params(axis="x", labelsize=12)
+        axs[0].tick_params(axis="y", labelsize=12)
+        axs[1].plot(x, df['dice_coefficient'], label='DICE')
+        axs[1].plot(x, df['val_dice_coefficient'], label='Validation DICE')
+        axs[1].legend(prop={'size': 14})
+        axs[1].tick_params(axis="x", labelsize=12)
+        axs[1].tick_params(axis="y", labelsize=12)
+        fig.savefig(os.path.join(training_dir, 'progress_graph.png'))
+        plt.close()
+    except:
+        print(f'Something went wrong in {exp}')
+    return True
+
 
 def get_last_model_path(model_file_path):
     return sorted(glob.glob(model_file_path + '*.h5'), key=os.path.getmtime)[-1]
