@@ -4,8 +4,10 @@ SimpleITK
 scipy
 pandas
 matplotlib
-Keras>=2
+Keras==2.3.1
 numpy>=1.12.1
 nilearn>=0.3.0
 tables>=3.4.2
 nibabel>=2.1.0
+tensorflow
+tqdm

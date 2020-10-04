@@ -8,8 +8,9 @@ import pandas as pd
 
 
 configs_folder = r"/datadrive/configs"
-data_folder = r"/home/Shai/placenta_data/"
+data_folder = r"/home/Shai/all_placenta_data/"
 exp_name_prefix = "20200911_single_res_new_data_cross_val_train_"
+exp_name_prefix = "20200930_reconstruct_2d_base_multiple_res_cross_val_train_"
 output_file_path_volume = os.path.join(configs_folder, exp_name_prefix) + 'volume_results.xlsx'
 
 all_rel_exps = glob.glob(os.path.join(configs_folder, exp_name_prefix + '*'))
@@ -21,6 +22,9 @@ subjects_results_dict = {}
 for exp in all_rel_exps:
     print(f"In exp: {exp}")
     pred_dir = os.path.join(exp, 'predictions', 'test')
+    if not os.path.exists(pred_dir):
+        print(f"Skipping: {exp}")
+        continue    
     sub_ids = os.listdir(pred_dir)
     for sub_id in sub_ids:
         pred = nib.load(os.path.join(pred_dir, sub_id, 'prediction.nii.gz')).get_data()
@@ -29,7 +33,7 @@ for exp in all_rel_exps:
 
         cur_dice = dice_coefficient_np(truth, binary_pred)
         cur_vo = vod_coefficient_np(truth, binary_pred)
-        cur_haus, cur_assd = get_surface_distances(truth, binary_pred)
+        cur_haus, cur_assd = get_surface_distances(truth.astype('uint8'), binary_pred.astype('uint8'))
         fnr = false_negative_rate(truth, binary_pred)
         fpr = false_positive_rate(truth, binary_pred)
 

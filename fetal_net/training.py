@@ -10,7 +10,8 @@ from fetal_net.metrics import (dice_coefficient, dice_coefficient_loss, dice_coe
                                weighted_dice_coefficient_loss, weighted_dice_coefficient,
                                vod_coefficient, vod_coefficient_loss, focal_loss, dice_and_xent)
 
-K.set_image_dim_ordering('th')
+# K.set_image_dim_ordering('th')
+K.set_image_data_format('channels_first')
 from multiprocessing import cpu_count
 
 
