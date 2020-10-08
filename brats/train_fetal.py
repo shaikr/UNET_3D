@@ -14,6 +14,9 @@ from pathlib import Path
 import json
 import argparse
 
+import tensorflow as tf
+from keras.backend.tensorflow_backend import set_session
+
 
 # will have: 96x96x5, 64x64x5, 128x128x5, 96x96x3, 96x96x7
 parser = argparse.ArgumentParser()
@@ -319,5 +322,10 @@ def main_train(config, overwrite=False):
 
 
 if __name__ == "__main__":
+    config_gpu = tf.ConfigProto()
+    config_gpu.gpu_options.allow_growth = True
+    sess = tf.Session(config=config_gpu)
+    set_session(sess)
+
     main_train(config=config, overwrite=config["overwrite"])
     generate_progress_graph(config["base_dir"])

@@ -11,6 +11,9 @@ import argparse
 
 from fetal_net.utils.cut_relevant_areas import find_bounding_box, cut_bounding_box
 
+import tensorflow as tf
+from keras.backend.tensorflow_backend import set_session
+
 
 def main(config, split='test', overlap_factor=1, config2=None, use_augmentations=False, scale_xy=None):
     prediction_dir = os.path.abspath(os.path.join(config['base_dir'], 'predictions', split))
@@ -53,5 +56,10 @@ if __name__ == "__main__":
 
     with open(os.path.join(opts.config_dir, 'config.json')) as f:
         config = json.load(f)
+
+    config_gpu = tf.ConfigProto()
+    config_gpu.gpu_options.allow_growth = True
+    sess = tf.Session(config=config_gpu)
+    set_session(sess)
 
     main(config, opts.split, opts.overlap_factor, use_augmentations=opts.use_augmentations, scale_xy=opts.scale_xy)
