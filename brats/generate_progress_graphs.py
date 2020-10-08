@@ -24,11 +24,12 @@ for exp in tqdm(all_exps):
             axs[0].legend(prop={'size': 14})
             axs[0].tick_params(axis="x", labelsize=12)
             axs[0].tick_params(axis="y", labelsize=12)
-            axs[1].plot(x, df['dice_coefficient'], label='DICE')
-            axs[1].plot(x, df['val_dice_coefficient'], label='Validation DICE')
-            axs[1].legend(prop={'size': 14})
-            axs[1].tick_params(axis="x", labelsize=12)
-            axs[1].tick_params(axis="y", labelsize=12)
+            if 'dice_coefficient' in df:
+                axs[1].plot(x, df['dice_coefficient'], label='DICE')
+                axs[1].plot(x, df['val_dice_coefficient'], label='Validation DICE')
+                axs[1].legend(prop={'size': 14})
+                axs[1].tick_params(axis="x", labelsize=12)
+                axs[1].tick_params(axis="y", labelsize=12)
             fig.savefig(os.path.join(configs_folder, exp, 'progress_graph.png'))
             plt.close()
         except:
