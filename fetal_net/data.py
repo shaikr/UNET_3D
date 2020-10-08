@@ -53,7 +53,7 @@ def add_data_to_storage(data_storage, truth_storage, pred_storage, add_pred, sub
         pred_ind = -1
         truth_ind = -1
     else:
-        raise ValueError("Amount of modalities is {}, add_pred is {}. What should happen?".format(n_modalities, add_pred))
+        raise ValueError(f"Amount of modalities is {n_modalities}, add_pred is {add_pred}. What should happen?")
     
     data_storage.append(np.asarray(subject_data[data_ind]).astype(np.float))
     if pred_ind > 0:
