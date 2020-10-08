@@ -36,7 +36,8 @@ def main(config, split='test', overlap_factor=1, config2=None, use_augmentations
                          pred_size=config["pred_size"],
                          use_augmentations=use_augmentations,
                          scale_xy=scale_xy,
-                         resolution_file=config["resolution_dict_file"])
+                         resolution_file=config["resolution_dict_file"],
+                         is3d=config["3D"])
 
 
 if __name__ == "__main__":

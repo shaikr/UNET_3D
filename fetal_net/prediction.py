@@ -24,7 +24,7 @@ def flip_it(data_, axes):
     return data_
 
 
-def predict_augment(data, model, overlap_factor, patch_shape, num_augments=5):
+def predict_augment(data, model, overlap_factor, patch_shape, num_augments=5, is3d=False):
     data_max = data.max()
     data_min = data.min()
     data = data.squeeze()
@@ -52,7 +52,8 @@ def predict_augment(data, model, overlap_factor, patch_shape, num_augments=5):
 
         curr_data = ndimage.rotate(curr_data, rotate_factor, order=order, reshape=False, mode='constant', cval=cval)
 
-        curr_prediction, _ = patch_wise_prediction(model=model, data=curr_data[np.newaxis, ...], overlap_factor=overlap_factor, patch_shape=patch_shape)
+        curr_prediction, _ = patch_wise_prediction(model=model, data=curr_data[np.newaxis, ...],
+                                                   overlap_factor=overlap_factor, patch_shape=patch_shape, is3d=is3d)
 
         curr_prediction = curr_prediction.squeeze()
 
@@ -80,7 +81,7 @@ def predict_flips(data, model, overlap_factor, config):
             patch_wise_prediction(model=model,
                                   data=np.expand_dims(data_.squeeze(), 0),
                                   overlap_factor=overlap_factor,
-                                  patch_shape=config["patch_shape"] + [config["patch_depth"]]).squeeze()
+                                  patch_shape=config["patch_shape"] + [config["patch_depth"]], is3d=config["3D"]).squeeze()
         curr_pred = flip_it(curr_pred, axes)
         return curr_pred
 
@@ -130,7 +131,7 @@ def batch_iterator(indices, batch_size, data_0, patch_shape,
     # print('Finished! {}-{}'.format(i, len(indices)))
 
 
-def patch_wise_prediction(model: Model, data, patch_shape, overlap_factor=0, batch_size=5,
+def patch_wise_prediction(model: Model, data, patch_shape, overlap_factor=0, batch_size=5, is3d=False,
                           permute=False, truth_data=None, prev_truth_index=None, prev_truth_size=None,
                           pred_data=None, pred_index=None, pred_size=None):
     """
@@ -142,7 +143,6 @@ def patch_wise_prediction(model: Model, data, patch_shape, overlap_factor=0, bat
     :param data:
     :return:
     """
-    is3d = np.sum(np.array(model.output_shape[1:]) > 1) > 2
 
     if is3d:
         prediction_shape = model.output_shape[-3:]
@@ -333,7 +333,7 @@ def multi_class_prediction(prediction, affine):
 
 def run_validation_case_from_image_simple(output_dir, model, processed_image, patch_shape, image_gt=None,
                                           image_pred=None, overlap_factor=0.8, prev_truth_index=None,
-                                          prev_truth_size=None, pred_index=None, pred_size=None):
+                                          prev_truth_size=None, pred_index=None, pred_size=None, is3d=False):
     """
 
     :param output_dir: folder to save prediction results in
@@ -354,7 +354,7 @@ def run_validation_case_from_image_simple(output_dir, model, processed_image, pa
         patch_wise_prediction(model=model, data=np.expand_dims(processed_image.squeeze(), 0), overlap_factor=overlap_factor,
                               patch_shape=patch_shape, truth_data=image_gt, prev_truth_index=prev_truth_index,
                               prev_truth_size=prev_truth_size, pred_data=image_pred, pred_index=pred_index,
-                              pred_size=pred_size)  # [np.newaxis]
+                              pred_size=pred_size, is3d=is3d)  # [np.newaxis]
     prediction = prediction.squeeze()
     prediction_image = get_image(prediction)
 
@@ -408,7 +408,7 @@ def run_validation_cases_from_image_simple(list_of_processed_images, model_file,
 
 
 def run_validation_case(data_index, output_dir, model, data_file, training_modalities, patch_shape,
-                        overlap_factor=0, permute=False, prev_truth_index=None, prev_truth_size=None,
+                        overlap_factor=0, permute=False, prev_truth_index=None, prev_truth_size=None, is3d=False,
                         pred_index=None, pred_size=None, use_augmentations=False, scale_xy=None, resolution_file=''):
     """
     Runs a test case and writes predicted images to file.
@@ -465,8 +465,9 @@ def run_validation_case(data_index, output_dir, model, data_file, training_modal
             prediction, prediction_var = \
                 patch_wise_prediction(model=model, data=test_data, overlap_factor=overlap_factor,
                                       patch_shape=patch_shape, permute=permute,
-                                      truth_data=test_truth_data, prev_truth_index=prev_truth_index, prev_truth_size=prev_truth_size,
-                                      pred_data=test_pred_data, pred_index=pred_index, pred_size=pred_size) #[np.newaxis]
+                                      truth_data=test_truth_data, prev_truth_index=prev_truth_index,
+                                      prev_truth_size=prev_truth_size,
+                                      pred_data=test_pred_data, pred_index=pred_index, pred_size=pred_size, is3d=is3d) #[np.newaxis]
     # if prediction.shape[-1] > 1:
     #     prediction = prediction[..., 1]
     prediction = prediction.squeeze()
@@ -496,7 +497,7 @@ def run_validation_case(data_index, output_dir, model, data_file, training_modal
 
 
 def run_validation_cases(validation_keys_file, model_file, training_modalities, hdf5_file, patch_shape,
-                         output_dir=".", overlap_factor=0, permute=False,
+                         output_dir=".", overlap_factor=0, permute=False, is3d=False,
                          prev_truth_index=None, prev_truth_size=None, pred_index=None, pred_size=None,
                          use_augmentations=False, scale_xy=None, resolution_file=''):
     file_names = []
@@ -513,7 +514,7 @@ def run_validation_cases(validation_keys_file, model_file, training_modalities, 
             case_directory = os.path.join(output_dir, "validation_case_{}".format(index))
         file_names.append(
             run_validation_case(data_index=index, output_dir=case_directory, model=model, data_file=data_file,
-                                training_modalities=training_modalities, overlap_factor=overlap_factor,
+                                training_modalities=training_modalities, overlap_factor=overlap_factor, is3d=is3d,
                                 permute=permute, patch_shape=patch_shape, prev_truth_index=prev_truth_index,
                                 prev_truth_size=prev_truth_size, pred_index=pred_index, pred_size=pred_size,
                                 use_augmentations=use_augmentations, scale_xy=scale_xy, resolution_file=resolution_file))

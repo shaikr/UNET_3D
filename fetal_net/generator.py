@@ -156,7 +156,7 @@ def get_training_and_validation_generators(data_file, batch_size, n_labels, trai
     num_training_steps = patches_per_epoch // batch_size
     print("Number of training steps: ", num_training_steps)
 
-    num_validation_steps = patches_per_epoch // batch_size
+    num_validation_steps = patches_per_epoch // validation_batch_size
     print("Number of validation steps: ", num_validation_steps)
 
     return training_generator, validation_generator, num_training_steps, num_validation_steps
