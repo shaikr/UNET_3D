@@ -93,6 +93,7 @@ else:
         config["truth_index"] = 7 # 0
         config["truth_size"] = 1 # 64
         model_name = 'unet'  # or 'isensee'
+        model_name = 'vnet'
     else:
         #Model params (2D) - should increase "batch_size" and "patches_per_epoch"
         config["patch_shape"] = (64, 64)  # switch to None to train on the whole image
@@ -105,7 +106,8 @@ else:
     config["model_name"] = {
         '3D': {
             'unet': 'unet_model_3d',
-            'isensee': 'isensee2017_model_3d'
+            'isensee': 'isensee2017_model_3d',
+            'vnet': 'vnet'
         },
         '2D': {
             'unet': 'unet_model_2d',
