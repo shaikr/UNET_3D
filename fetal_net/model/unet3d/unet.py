@@ -15,7 +15,7 @@ except ImportError:
 
 
 def unet_model_3d(input_shape, pool_size=(2, 2, 2), n_labels=1, initial_learning_rate=0.00001, deconvolution=False,
-                  depth=4, n_base_filters=32, include_label_wise_dice_coefficients=False,
+                  depth=3, n_base_filters=32, include_label_wise_dice_coefficients=False,
                   batch_normalization=False, activation_name="sigmoid", loss_function=dice_coefficient_loss,
                   truth_index=0, truth_size=None, **kargs):
     """
