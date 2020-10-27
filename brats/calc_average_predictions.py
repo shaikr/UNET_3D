@@ -29,12 +29,16 @@ def main(configs_folder, resulting_folder, participating_exps):
                 if sub_id in dict_preds:
                     dict_preds[sub_id][PRED_KEY].append(pred)
                 else:
+                    dict_preds[sub_id] = {}
                     dict_preds[sub_id][PRED_KEY] = [pred]
                     dict_preds[sub_id][HEADER_KEY] = pred_im.header
                     dict_preds[sub_id][AFFINE_KEY] = pred_im.affine
             except Exception as e:
                 print(e)
+    print(len(dict_preds))
     for sub_id in dict_preds:
+        print("here")
+        Path(os.path.join(new_preds_path, sub_id)).mkdir(exist_ok=True, parents=True)
         avg_pred = sum(dict_preds[sub_id][PRED_KEY]) / len(dict_preds[sub_id][PRED_KEY])
         save_path = os.path.join(new_preds_path, sub_id, f'prediction.nii.gz')
         nib.save(nib.Nifti1Image(avg_pred, dict_preds[sub_id][AFFINE_KEY], header=dict_preds[sub_id][HEADER_KEY]),
@@ -47,8 +51,9 @@ if __name__ == "__main__":
                         type=str, required=False, default=r"/datadrive/configs")
     parser.add_argument("--resulting_folder", help="specifies what folder to save results in",
                         type=str, required=True)
-    parser.add_argument("--participating_exps", help="specifies what experiments to average",
-                        type=list, required=True)
+    parser.add_argument("--participating_exps", nargs='+', help="specifies what experiments to average",
+                        required=True)
     opts = parser.parse_args()
+    print(opts.participating_exps)
 
     main(opts.configs_folder, opts.resulting_folder, opts.participating_exps)
