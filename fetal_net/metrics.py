@@ -12,6 +12,13 @@ class SurfaceDistanceMeasures(Enum):
         range(5)
 
 
+def recall_rate(y_true, y_pred, smooth=1.):
+    y_true_f = y_true.flatten()
+    y_pred_f = y_pred.flatten()
+    true_positives = np.sum(y_true_f * y_pred_f)
+    return true_positives / (np.sum(y_true_f) + smooth)
+    
+
 def false_positive_rate(y_true, y_pred, smooth=1.):
     y_true_f = (1 - y_true).flatten()
     y_pred_f = y_pred.flatten()
