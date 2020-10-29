@@ -92,8 +92,11 @@ def predict_flips(data, model, overlap_factor, config):
     return predictions
 
 
-def get_set_of_patch_indices_full(start, stop, step):
+def get_set_of_patch_indices_full(start, stop, step, specific_slice=None):
     indices = []
+    if specific_slice:
+        start = start[:-1] + (specific_slice,)
+        stop = stop[:-1] + (specific_slice,)
     for start_i, stop_i, step_i in zip(start, stop, step):
         indices_i = list(range(start_i, stop_i + 1, step_i))
         if stop_i % step_i > 0:
@@ -133,14 +136,23 @@ def batch_iterator(indices, batch_size, data_0, patch_shape,
 
 def patch_wise_prediction(model: Model, data, patch_shape, overlap_factor=0, batch_size=5, is3d=False,
                           permute=False, truth_data=None, prev_truth_index=None, prev_truth_size=None,
-                          pred_data=None, pred_index=None, pred_size=None):
+                          pred_data=None, pred_index=None, pred_size=None, specific_slice=None):
     """
-    :param truth_data:
-    :param permute:
-    :param overlap_factor:
-    :param batch_size:
+
     :param model:
     :param data:
+    :param patch_shape:
+    :param overlap_factor:
+    :param batch_size:
+    :param is3d:
+    :param permute:
+    :param truth_data:
+    :param prev_truth_index:
+    :param prev_truth_size:
+    :param pred_data:
+    :param pred_index:
+    :param pred_size:
+    :param specific_slice:
     :return:
     """
 
@@ -188,7 +200,7 @@ def patch_wise_prediction(model: Model, data, patch_shape, overlap_factor=0, bat
 
     indices = get_set_of_patch_indices_full((0, 0, 0),
                                             np.subtract(data_0.shape, patch_shape),
-                                            np.subtract(patch_shape, overlap))
+                                            np.subtract(patch_shape, overlap), specific_slice)
 
     b_iter = batch_iterator(indices, batch_size, data_0, patch_shape,
                             truth_0, prev_truth_index, truth_patch_shape,
