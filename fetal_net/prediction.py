@@ -96,7 +96,7 @@ def get_set_of_patch_indices_full(start, stop, step, specific_slice=None):
     indices = []
     if specific_slice:
         start = start[:-1] + (specific_slice,)
-        stop = stop[:-1] + (specific_slice,)
+        stop[-1] = specific_slice
     for start_i, stop_i, step_i in zip(start, stop, step):
         indices_i = list(range(start_i, stop_i + 1, step_i))
         if stop_i % step_i > 0:
@@ -163,10 +163,12 @@ def patch_wise_prediction(model: Model, data, patch_shape, overlap_factor=0, bat
     min_overlap = np.subtract(patch_shape, prediction_shape)
     max_overlap = np.subtract(patch_shape, (1, 1, 1))
     overlap = min_overlap + (overlap_factor * (max_overlap - min_overlap)).astype(np.int)
-    data_0 = np.pad(data[0],
-                    [(np.ceil(_ / 2).astype(int), np.floor(_ / 2).astype(int)) for _ in
-                     np.subtract(patch_shape, prediction_shape)],
+    pad_for_fit = [(np.ceil(_ / 2).astype(int), np.floor(_ / 2).astype(int)) for _ in
+                     np.subtract(patch_shape, prediction_shape)]
+    data_0 = np.pad(data[0], pad_for_fit,
                     mode='constant', constant_values=np.percentile(data[0], q=1))
+    if specific_slice:
+        specific_slice += pad_for_fit[-1][0]
     pad_for_fit = [(np.ceil(_ / 2).astype(int), np.floor(_ / 2).astype(int)) for _ in
                    np.maximum(np.subtract(patch_shape, data_0.shape), 0)]
     data_0 = np.pad(data_0,
@@ -201,7 +203,6 @@ def patch_wise_prediction(model: Model, data, patch_shape, overlap_factor=0, bat
     indices = get_set_of_patch_indices_full((0, 0, 0),
                                             np.subtract(data_0.shape, patch_shape),
                                             np.subtract(patch_shape, overlap), specific_slice)
-
     b_iter = batch_iterator(indices, batch_size, data_0, patch_shape,
                             truth_0, prev_truth_index, truth_patch_shape,
                             pred_0, pred_index, pred_patch_shape)
@@ -215,7 +216,7 @@ def patch_wise_prediction(model: Model, data, patch_shape, overlap_factor=0, bat
     predicted_output = np.zeros(data_shape)
     predicted_count = np.zeros(data_shape, dtype=np.int16)
     with tqdm(total=len(indices)) as pbar:
-        for [curr_batch, batch_indices] in tb_iter:
+        for [curr_batch, batch_indices] in tb_iter:   
             curr_batch = np.asarray(curr_batch)
             if is3d:
                 curr_batch = np.expand_dims(curr_batch, 1)
@@ -234,7 +235,7 @@ def patch_wise_prediction(model: Model, data, patch_shape, overlap_factor=0, bat
                 predicted_count[x:x + x_len, y:y + y_len, z:z + z_len] += 1
             pbar.update(batch_size)
 
-    assert np.all(predicted_count > 0), 'Found zeros in count'
+    # assert np.all(predicted_count > 0), 'Found zeros in count'
 
     if np.sum(pad_for_fit) > 0:
         # must be a better way :\
@@ -248,6 +249,8 @@ def patch_wise_prediction(model: Model, data, patch_shape, overlap_factor=0, bat
                            z_pad[0]: z_pad[1]]
 
     assert np.array_equal(predicted_count.shape[:-1], data[0].shape), 'prediction shape wrong'
+    
+    predicted_count[predicted_count == 0] = 1
 
     final_prediction = predicted_output / predicted_count
     prediction_variance = np.zeros(predicted_count.shape)
@@ -443,16 +446,16 @@ def run_validation_case(data_index, output_dir, model, data_file, training_modal
         os.makedirs(output_dir)
 
     test_data = np.asarray([data_file.root.data[data_index]])
-    test_data = scale_data(test_data, cur_subject_id, dict_pkl=resolution_file, scale_xy=scale_xy)
+    #test_data = scale_data(test_data, cur_subject_id, dict_pkl=resolution_file, scale_xy=scale_xy)
     if prev_truth_index is not None:
         test_truth_data = np.asarray([data_file.root.truth[data_index]])
-        test_truth_data = scale_data(test_truth_data, cur_subject_id, dict_pkl=resolution_file, scale_xy=scale_xy)
+        #test_truth_data = scale_data(test_truth_data, cur_subject_id, dict_pkl=resolution_file, scale_xy=scale_xy)
     else:
         test_truth_data = None
 
     if pred_index is not None:
         test_pred_data = np.asarray([data_file.root.pred[data_index]])
-        test_pred_data = scale_data(test_pred_data, cur_subject_id, dict_pkl=resolution_file, scale_xy=scale_xy)
+        #test_pred_data = scale_data(test_pred_data, cur_subject_id, dict_pkl=resolution_file, scale_xy=scale_xy)
     else:
         test_pred_data = None
 
