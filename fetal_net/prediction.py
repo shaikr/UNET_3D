@@ -24,36 +24,66 @@ def flip_it(data_, axes):
     return data_
 
 
-def predict_augment(data, model, overlap_factor, patch_shape, num_augments=5, is3d=False):
+def predict_augment(model, data, patch_shape, num_augments=5, overlap_factor=0, batch_size=16, is3d=False,
+                    permute=False, truth_data = None, prev_truth_index = None, prev_truth_size = None,
+                    pred_data=None, pred_index=None, pred_size=None, specific_slice=None):
+
     data_max = data.max()
     data_min = data.min()
     data = data.squeeze()
+    curr_truth_data = None
+    curr_pred_data = None
 
     order = 2
     cval = np.percentile(data, q=1)
 
     predictions = []
     for _ in range(num_augments):
-        # pixel-wise augmentations
+
+        # pixel-wise augmentations - don't need to apply to truth or predictions
         val_range = data_max - data_min
         contrast_min_val = data_min + 0.10 * np.random.uniform(-1, 1) * val_range
         contrast_max_val = data_max + 0.10 * np.random.uniform(-1, 1) * val_range
         curr_data = contrast_augment(data, contrast_min_val, contrast_max_val)
 
-        # spatial augmentations
+        # spatial augmentations - need to apply to truth or predictions
         rotate_factor = np.random.uniform(-30, 30)
         to_flip = np.arange(0, 3)[np.random.choice([True, False], size=3)]
         to_transpose = np.random.choice([True, False])
 
         curr_data = flip_it(curr_data, to_flip)
+        curr_truth_data = None
+        curr_pred_data = None
+        if truth_data is not None:
+            curr_truth_data = truth_data.copy().squeeze()
+            curr_truth_data = flip_it(curr_truth_data, to_flip)
+        if pred_data is not None:
+            curr_pred_data = pred_data.copy().squeeze()
+            curr_pred_data = flip_it(curr_pred_data, to_flip)
 
         if to_transpose:
             curr_data = curr_data.transpose([1, 0, 2])
+            if truth_data is not None:
+                curr_truth_data = curr_truth_data.transpose([1, 0, 2])
+            if pred_data is not None:
+                curr_pred_data = curr_pred_data.transpose([1, 0, 2])
 
         curr_data = ndimage.rotate(curr_data, rotate_factor, order=order, reshape=False, mode='constant', cval=cval)
+        if truth_data is not None:
+            curr_truth_data = ndimage.rotate(curr_truth_data, rotate_factor, order=order, reshape=False,
+                                             mode='constant', cval=cval)
+            curr_truth_data = curr_truth_data[np.newaxis, ...]
+        if pred_data is not None:
+            curr_pred_data = ndimage.rotate(curr_pred_data, rotate_factor, order=order, reshape=False,
+                                             mode='constant', cval=cval)
+            curr_pred_data = curr_pred_data[np.newaxis, ...]
 
-        curr_prediction, _ = patch_wise_prediction(model=model, data=curr_data[np.newaxis, ...],
-                                                   overlap_factor=overlap_factor, patch_shape=patch_shape, is3d=is3d)
+        curr_prediction, _ = \
+            patch_wise_prediction(model=model, data=curr_data[np.newaxis, ...], overlap_factor=overlap_factor,
+                                  batch_size=batch_size, patch_shape=patch_shape, permute=permute,
+                                  truth_data=curr_truth_data, prev_truth_index=prev_truth_index,
+                                  prev_truth_size=prev_truth_size, pred_data=curr_pred_data, pred_index=pred_index,
+                                  pred_size=pred_size, is3d=is3d)
 
         curr_prediction = curr_prediction.squeeze()
 
@@ -474,15 +504,17 @@ def run_validation_case(data_index, output_dir, model, data_file, training_modal
         prediction = predict(model, test_data, permute=permute)
     else:
         if use_augmentations:
-            prediction = predict_augment(data=test_data, model=model, overlap_factor=overlap_factor,
-                                         patch_shape=patch_shape)
+            prediction = predict_augment(model=model, data=test_data, overlap_factor=overlap_factor,
+                                         patch_shape=patch_shape, permute=permute, truth_data=test_truth_data,
+                                         prev_truth_index=prev_truth_index, prev_truth_size=prev_truth_size,
+                                         pred_data=test_pred_data, pred_index=pred_index, pred_size=pred_size,
+                                         is3d=is3d)
         else:
             prediction, prediction_var = \
                 patch_wise_prediction(model=model, data=test_data, overlap_factor=overlap_factor,
-                                      patch_shape=patch_shape, permute=permute,
-                                      truth_data=test_truth_data, prev_truth_index=prev_truth_index,
-                                      prev_truth_size=prev_truth_size,
-                                      pred_data=test_pred_data, pred_index=pred_index, pred_size=pred_size, is3d=is3d) #[np.newaxis]
+                                      patch_shape=patch_shape, permute=permute, truth_data=test_truth_data,
+                                      prev_truth_index=prev_truth_index, prev_truth_size=prev_truth_size,
+                                      pred_data=test_pred_data, pred_index=pred_index, pred_size=pred_size, is3d=is3d)
     # if prediction.shape[-1] > 1:
     #     prediction = prediction[..., 1]
     prediction = prediction.squeeze()
