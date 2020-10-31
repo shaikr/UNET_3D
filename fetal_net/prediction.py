@@ -164,7 +164,7 @@ def batch_iterator(indices, batch_size, data_0, patch_shape,
     # print('Finished! {}-{}'.format(i, len(indices)))
 
 
-def patch_wise_prediction(model: Model, data, patch_shape, overlap_factor=0, batch_size=5, is3d=False,
+def patch_wise_prediction(model: Model, data, patch_shape, overlap_factor=0, batch_size=16, is3d=False,
                           permute=False, truth_data=None, prev_truth_index=None, prev_truth_size=None,
                           pred_data=None, pred_index=None, pred_size=None, specific_slice=None):
     """
