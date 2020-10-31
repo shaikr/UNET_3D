@@ -138,11 +138,16 @@ if __name__ == "__main__":
     sess = tf.Session(config=config_gpu)
     set_session(sess)
     
+    orig_pred = nib.load(opts.pred_path).get_data()
+    orig_pred_bin = postprocess_prediction(orig_pred)
+    
     pred_1, truth = main(opts.configs_folder, opts.data_folder, opts.model_folder, opts.subject_id, opts.validated_ind,
          opts.overlap_factor, opts.propagate, opts.starting_pred_path)
+    print(f"DICE between new pred and original: {dice_coefficient_np(orig_pred_bin, postprocess_prediction(pred_1))}")
     pred_2, _ = main(opts.configs_folder, opts.data_folder, opts.model_folder, opts.subject_id, opts.validated_ind,
          opts.overlap_factor, opts.propagate, opts.starting_pred_path, flip=True)
     pred_2 = pred_2[:,:,::-1]
+    print(f"DICE between new pred and original: {dice_coefficient_np(orig_pred_bin, postprocess_prediction(pred_2))}")
     n_slices = truth.shape[-1]
     
     # Option 1 - concatenate begining in both #
