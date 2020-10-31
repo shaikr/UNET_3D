@@ -16,3 +16,5 @@ test_dir
 *.hdr
 *.img
 *.out
+*.png
+nohup_*
