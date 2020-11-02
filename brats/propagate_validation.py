@@ -159,3 +159,7 @@ if __name__ == "__main__":
     pred = (pred_1 + pred_2) / 2
     pred_bin = postprocess_prediction(pred)
     print(f"DICE after averaging both: {dice_coefficient_np(truth, pred_bin)}")
+    
+    pred = (pred_1 + pred_2 + orig_pred) / 3
+    pred_bin = postprocess_prediction(pred)
+    print(f"DICE after averaging both and original: {dice_coefficient_np(truth, pred_bin)}")
