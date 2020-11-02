@@ -157,3 +157,8 @@ dice_coef = dice_coefficient
 dice_coef_loss = dice_coefficient_loss
 binary_crossentropy_loss = binary_crossentropy
 focal_loss = _focal_loss()
+
+
+def combined_dice_focal_loss(y_true, y_pred, focal_weight=0.001):
+    return dice_coef_loss(y_true, y_pred) + \
+           focal_weight * focal_loss(y_true, y_pred)
