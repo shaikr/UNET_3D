@@ -122,6 +122,11 @@ else:
         2: 'focal_loss',
         3: 'dice_and_xent'
     }[2]
+    
+    config["model_params"] = {
+        "depth": 3,
+        "n_base_filters": 32    
+    }
 
     config["augment"] = {
         "flip": [0.5, 0.5, 0.5],  # augments the data by randomly flipping an axis during
@@ -273,6 +278,8 @@ def main_train(config, overwrite=False):
                            initial_learning_rate=config["initial_learning_rate"],
                            **{'dropout_rate': config['dropout_rate'],
                               'loss_function': loss_func,
+                              'depth': config['model_params']['depth'],
+                              'n_base_filters': config['model_params']['n_base_filters'],
                               'old_model_path': config['old_model'],
                               'truth_index': config['truth_index'],
                               'truth_size': config['truth_size']})
