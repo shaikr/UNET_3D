@@ -185,3 +185,24 @@ def create_id_postprocess_prediction(pred_dir, cur_id, orig_data_folder):
     print(f'Volume of prediction is: {np.sum(pred_bin_data.flatten())}')
     print(f'overall vod in id {cur_id}: {vod_coefficient(truth, pred_bin_data)}')
     print(f'overall dice in id {cur_id}: {dice_coefficient(truth, pred_bin_data)}')
+
+
+# Do what we need to obtain the multiple predictions
+def get_all_preds(s_id, configs_folder, rel_experiments, group_name='test'):
+    # group_name = 'train'/'val'/'test'
+    # s_id - string of subject id
+    predictions = []
+    for exp in rel_experiments:
+        pred_path = os.path.join(configs_folder, exp, 'predictions', group_name, s_id, 'prediction.nii.gz')
+        pred = nib.load(pred_path).get_fdata()
+        if pred.ndim == 4:
+            for i in range(pred.shape[0]):
+                predictions += [pred[i]]
+        else:
+            predictions += [pred]
+    if len(predictions) == 1:
+        predictions = predictions[0]
+    else:
+        predictions = np.stack(predictions, axis=0)
+    return predictions.squeeze()
+    
