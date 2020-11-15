@@ -6,16 +6,17 @@ import numpy as np
 import tables
 from keras import Model
 from tqdm import tqdm
+from nilearn.image import resample_to_img
 from scipy import ndimage
 
 from brats.utils import get_last_model_path
 from fetal_net.utils.threaded_generator import ThreadedGenerator
-from fetal_net.utils.utils import get_image, resize, scale_data
+from fetal_net.utils.utils import get_image, resize, scale_data, interpolate_affine_range
 from .training import load_old_model
 from .utils import pickle_load
 from .utils.patches import reconstruct_from_patches, get_patch_from_3d_data, compute_patch_indices, \
     get_set_of_patch_indices
-from .augment import permute_data, generate_permutation_keys, reverse_permute_data, contrast_augment
+from .augment import permute_data, generate_permutation_keys, reverse_permute_data, contrast_augment, scale_image
 
 
 def flip_it(data_, axes):
@@ -24,7 +25,7 @@ def flip_it(data_, axes):
     return data_
 
 
-def predict_augment(model, data, patch_shape, num_augments=5, overlap_factor=0, batch_size=16, is3d=False,
+def predict_augment(model, data, patch_shape, num_augments=5, overlap_factor=0, batch_size=32, is3d=False,
                     permute=False, truth_data = None, prev_truth_index = None, prev_truth_size = None,
                     pred_data=None, pred_index=None, pred_size=None, specific_slice=None):
 
@@ -36,30 +37,46 @@ def predict_augment(model, data, patch_shape, num_augments=5, overlap_factor=0, 
 
     order = 2
     cval = np.percentile(data, q=1)
+    
+    init_prediction, _ = \
+            patch_wise_prediction(model=model, data=data[np.newaxis, ...], overlap_factor=overlap_factor,
+                                  batch_size=batch_size, patch_shape=patch_shape, permute=permute,
+                                  truth_data=truth_data, prev_truth_index=prev_truth_index,
+                                  prev_truth_size=prev_truth_size, pred_data=pred_data, pred_index=pred_index,
+                                  pred_size=pred_size, is3d=is3d)
 
-    predictions = []
-    for _ in range(num_augments):
-
-        # pixel-wise augmentations - don't need to apply to truth or predictions
+    predictions = [init_prediction.squeeze()]
+    for i in range(num_augments):
+        ### pixel-wise augmentations - don't need to apply to truth or predictions
         val_range = data_max - data_min
         contrast_min_val = data_min + 0.10 * np.random.uniform(-1, 1) * val_range
         contrast_max_val = data_max + 0.10 * np.random.uniform(-1, 1) * val_range
-        curr_data = contrast_augment(data, contrast_min_val, contrast_max_val)
+        # curr_data = contrast_augment(data, contrast_min_val, contrast_max_val)
+        curr_data = data.copy()
 
-        # spatial augmentations - need to apply to truth or predictions
-        rotate_factor = np.random.uniform(-30, 30)
+        ### spatial augmentations - need to apply to truth or predictions
+        # rotate_factor = np.random.uniform(-30, 30)
+        rotate_factor = 0
         to_flip = np.arange(0, 3)[np.random.choice([True, False], size=3)]
         to_transpose = np.random.choice([True, False])
+        scale_factors = np.random.normal(1, [0.15,0.15,0], 3)
 
         curr_data = flip_it(curr_data, to_flip)
+        curr_affine = scale_image(np.eye(4), scale_factors)
+        curr_data = resample_to_img(get_image(curr_data, curr_affine), get_image(curr_data), interpolation="continuous",
+                               copy=False, clip=True).get_fdata()
         curr_truth_data = None
         curr_pred_data = None
         if truth_data is not None:
             curr_truth_data = truth_data.copy().squeeze()
             curr_truth_data = flip_it(curr_truth_data, to_flip)
+            curr_truth_data = resample_to_img(get_image(curr_truth_data, curr_affine), get_image(curr_truth_data), interpolation="continuous",
+                               copy=False, clip=True).get_fdata()
         if pred_data is not None:
             curr_pred_data = pred_data.copy().squeeze()
             curr_pred_data = flip_it(curr_pred_data, to_flip)
+            curr_pred_data = resample_to_img(get_image(curr_pred_data, curr_affine), get_image(curr_pred_data), interpolation="continuous",
+                               copy=False, clip=True).get_fdata()
 
         if to_transpose:
             curr_data = curr_data.transpose([1, 0, 2])
@@ -84,15 +101,17 @@ def predict_augment(model, data, patch_shape, num_augments=5, overlap_factor=0, 
                                   truth_data=curr_truth_data, prev_truth_index=prev_truth_index,
                                   prev_truth_size=prev_truth_size, pred_data=curr_pred_data, pred_index=pred_index,
                                   pred_size=pred_size, is3d=is3d)
-
         curr_prediction = curr_prediction.squeeze()
-
+        
         curr_prediction = ndimage.rotate(curr_prediction, -rotate_factor, order=0, reshape=False, mode='constant', cval=0)
-
         if to_transpose:
             curr_prediction = curr_prediction.transpose([1, 0, 2])
-
+        rev_scale_factors = [1/x for x in scale_factors]
+        curr_affine = scale_image(np.eye(4), rev_scale_factors)
+        curr_prediction = resample_to_img(get_image(curr_prediction, curr_affine), get_image(curr_prediction), interpolation="continuous",
+                               copy=False, clip=True).get_fdata()
         curr_prediction = flip_it(curr_prediction, to_flip)
+        
         predictions += [curr_prediction.squeeze()]
 
     res = np.stack(predictions, axis=0)
@@ -164,7 +183,7 @@ def batch_iterator(indices, batch_size, data_0, patch_shape,
     # print('Finished! {}-{}'.format(i, len(indices)))
 
 
-def patch_wise_prediction(model: Model, data, patch_shape, overlap_factor=0, batch_size=16, is3d=False,
+def patch_wise_prediction(model: Model, data, patch_shape, overlap_factor=0, batch_size=32, is3d=False,
                           permute=False, truth_data=None, prev_truth_index=None, prev_truth_size=None,
                           pred_data=None, pred_index=None, pred_size=None, specific_slice=None):
     """
