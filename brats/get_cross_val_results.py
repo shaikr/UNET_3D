@@ -7,6 +7,7 @@ import glob
 import numpy as np
 import pandas as pd
 import argparse
+from tqdm import tqdm 
 
 
 splits = ["val", "test"]
@@ -37,7 +38,7 @@ def main(configs_folder, data_folder, results_folder, exp_name_prefix):
                 print(f"Skipping: {exp}")
                 continue
             sub_ids = os.listdir(pred_dir)
-            for s_id in sub_ids:
+            for s_id in tqdm(sub_ids):
                 try:
                     truth = nib.load(os.path.join(data_folder, s_id, 'truth.nii')).get_data()
                     preds = glob.glob(os.path.join(pred_dir, s_id, 'prediction*'))
