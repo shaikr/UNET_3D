@@ -48,7 +48,7 @@ if __name__ == "__main__":
     parser.add_argument("--split", help="What split to predict on? (test/val)",
                         type=str, default='test')
     parser.add_argument("--overlap_factor", help="specifies overlap between prediction patches",
-                        type=float, default=0.9) # 0.9
+                        type=float, default=0.8) # 0.9
     parser.add_argument("--use_augmentations", help="specifies whether to predict on augmentations",
                         type=bool, default=False) # False
     parser.add_argument("--scale_xy", help="specifies whether to rescale xy to 1.56x1.56",
