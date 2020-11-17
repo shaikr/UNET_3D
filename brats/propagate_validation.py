@@ -55,6 +55,8 @@ def main(configs_folder, data_folder, model_folder, subject_id, validated_ind, o
     if flip:
         vol = vol[:,:,::-1]
         truth = truth[:,:,::-1]
+        if validated_ind >= 0:
+            validated_ind = truth.shape[-1] - validated_ind - 1
     
     inflated_vol = np.expand_dims(vol, axis=0).astype(np.float)
     inflated_vol, _, _ = normalize_data_storage_each(inflated_vol)
@@ -111,6 +113,9 @@ def main(configs_folder, data_folder, model_folder, subject_id, validated_ind, o
             inflated_truth[0][:, :, validated_ind] = pred_bin[:, :, fixing_slice]
             starting_slice = get_starting_slice_ind(validated_ind, config["prev_truth_index"])
     print(f"DICE after updating slice {fixing_slice}: {dice_coefficient_np(truth, pred_bin)}")
+    if flip:
+        pred = pred[:,:,::-1]
+        truth = truth[:,:,::-1]    
     return pred, truth
 
 if __name__ == "__main__":
@@ -138,7 +143,7 @@ if __name__ == "__main__":
     sess = tf.Session(config=config_gpu)
     set_session(sess)
     
-    orig_pred = nib.load(opts.pred_path).get_data()
+    orig_pred = nib.load(opts.starting_pred_path).get_data()
     orig_pred_bin = postprocess_prediction(orig_pred)
     
     pred_1, truth = main(opts.configs_folder, opts.data_folder, opts.model_folder, opts.subject_id, opts.validated_ind,
@@ -146,7 +151,6 @@ if __name__ == "__main__":
     print(f"DICE between new pred and original: {dice_coefficient_np(orig_pred_bin, postprocess_prediction(pred_1))}")
     pred_2, _ = main(opts.configs_folder, opts.data_folder, opts.model_folder, opts.subject_id, opts.validated_ind,
          opts.overlap_factor, opts.propagate, opts.starting_pred_path, flip=True)
-    pred_2 = pred_2[:,:,::-1]
     print(f"DICE between new pred and original: {dice_coefficient_np(orig_pred_bin, postprocess_prediction(pred_2))}")
     n_slices = truth.shape[-1]
     
@@ -156,10 +160,25 @@ if __name__ == "__main__":
     print(f"DICE after concatenating both: {dice_coefficient_np(truth, pred_bin)}")
     
     # Option 2 - average #
-    pred = (pred_1 + pred_2) / 2
-    pred_bin = postprocess_prediction(pred)
-    print(f"DICE after averaging both: {dice_coefficient_np(truth, pred_bin)}")
+    try:
+        pred = (pred_1 + pred_2) / 2
+        pred_bin = postprocess_prediction(pred)
+        print(f"DICE after averaging both: {dice_coefficient_np(truth, pred_bin)}")
+    except:
+        pass
     
-    pred = (pred_1 + pred_2 + orig_pred) / 3
-    pred_bin = postprocess_prediction(pred)
-    print(f"DICE after averaging both and original: {dice_coefficient_np(truth, pred_bin)}")
+    try:
+        pred = (pred_1 + pred_2 + orig_pred) / 3
+        pred_bin = postprocess_prediction(pred)
+        print(f"DICE after averaging both and original: {dice_coefficient_np(truth, pred_bin)}")
+    except:
+        pass
+        
+    # option 3 - median?
+    try:
+        preds = np.stack([pred_1, pred_2, orig_pred], axis=0)
+        pred = np.median(preds, axis=0)
+        pred_bin = postprocess_prediction(pred)
+        print(f"DICE after median both and original: {dice_coefficient_np(truth, pred_bin)}")
+    except:
+        pass
